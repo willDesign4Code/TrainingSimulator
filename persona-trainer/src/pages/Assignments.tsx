@@ -83,11 +83,12 @@ const Assignments = () => {
     try {
       setLoading(true);
 
-      // Fetch assignments - without ordering by created_at since it may not exist
+      // Fetch assignments - order by assigned_at (the actual column name)
       console.log('Fetching assignments...');
       const { data: assignmentsData, error: assignmentsError } = await supabase
         .from('content_assignments')
-        .select('*');
+        .select('*')
+        .order('assigned_at', { ascending: false });
 
       if (assignmentsError) {
         console.error('Assignments error:', assignmentsError);
@@ -109,12 +110,12 @@ const Assignments = () => {
           return {
             id: assignment.id,
             assignment_name: assignment.assignment_name || 'Untitled Assignment',
-            content_type: 'category' as const,
+            content_type: assignment.content_type || 'category',
             content_id: assignment.content_id,
             assigned_users: assignment.assigned_users || [],
             is_active: assignment.is_active || false,
             assigned_by: assignment.assigned_by,
-            created_at: new Date().toISOString(), // Use current date since created_at may not exist
+            created_at: assignment.assigned_at || new Date().toISOString(),
             category_name: categoryData?.name || 'Unknown Category',
             user_count: (assignment.assigned_users || []).length
           };
@@ -219,9 +220,15 @@ const Assignments = () => {
     try {
       setSaving(true);
 
+      // Use a dummy UUID for assigned_to_id since we're using assigned_users array instead
+      const dummyUserId = '00000000-0000-0000-0000-000000000000';
+
       const assignmentData = {
         assignment_name: formData.assignment_name.trim(),
+        content_type: 'category', // Required ENUM field
         content_id: formData.category_id,
+        assigned_to_type: 'user', // Required ENUM field
+        assigned_to_id: dummyUserId, // Required but we use assigned_users array instead
         assigned_users: formData.selected_users,
         assigned_by: user?.id,
         is_active: false // Always create as inactive
@@ -230,10 +237,17 @@ const Assignments = () => {
       console.log('Saving assignment:', assignmentData);
 
       if (editingAssignment) {
-        // Update existing assignment
+        // Update existing assignment - don't update the required fields
+        const updateData = {
+          assignment_name: formData.assignment_name.trim(),
+          assigned_users: formData.selected_users,
+          assigned_by: user?.id,
+          is_active: formData.selected_users.length > 0 ? editingAssignment.is_active : false
+        };
+
         const { error } = await supabase
           .from('content_assignments')
-          .update(assignmentData)
+          .update(updateData)
           .eq('id', editingAssignment.id);
 
         if (error) {
@@ -466,7 +480,21 @@ const Assignments = () => {
                     {selected.map((userId) => {
                       const user = users.find((u) => u.id === userId);
                       return (
-                        <Chip key={userId} label={user?.name || 'Unknown'} size="small" />
+                        <Chip
+                          key={userId}
+                          label={user?.name || 'Unknown'}
+                          size="small"
+                          onDelete={(e) => {
+                            e.stopPropagation();
+                            setFormData({
+                              ...formData,
+                              selected_users: formData.selected_users.filter(id => id !== userId)
+                            });
+                          }}
+                          onMouseDown={(e) => {
+                            e.stopPropagation();
+                          }}
+                        />
                       );
                     })}
                   </Box>
