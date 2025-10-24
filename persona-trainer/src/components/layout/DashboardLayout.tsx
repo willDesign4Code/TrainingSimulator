@@ -1,15 +1,14 @@
-import { useState, useEffect } from 'react';
-import { 
-  Box, 
-  AppBar, 
-  Toolbar, 
-  Typography, 
-  Drawer, 
-  List, 
-  ListItem, 
-  ListItemIcon, 
+import { useState } from 'react';
+import {
+  Box,
+  AppBar,
+  Toolbar,
+  Typography,
+  Drawer,
+  List,
+  ListItem,
+  ListItemIcon,
   ListItemText,
-  Container,
   IconButton,
   Divider,
   useMediaQuery,
@@ -25,30 +24,16 @@ import ForumIcon from '@mui/icons-material/Forum';
 import PersonIcon from '@mui/icons-material/Person';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import LogoutIcon from '@mui/icons-material/Logout';
+import { useAuth } from '../../contexts/AuthContext';
 
 const drawerWidth = 240;
-
-// Access the logout function from the window object (set in App.tsx)
-// In a real app, this would be handled by a proper auth context
-const useLogout = () => {
-  const [logout, setLogout] = useState<(() => void) | null>(null);
-  
-  useEffect(() => {
-    // Check if the logout function is available on the window object
-    if ((window as any).demoLogout) {
-      setLogout(() => (window as any).demoLogout);
-    }
-  }, []);
-  
-  return logout;
-};
 
 const DashboardLayout = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const navigate = useNavigate();
-  const logout = useLogout();
+  const { user, userProfile, signOut } = useAuth();
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -60,6 +45,8 @@ const DashboardLayout = () => {
       setMobileOpen(false);
     }
   };
+
+  const isAdminOrManager = userProfile?.role === 'admin' || userProfile?.role === 'manager';
 
   const drawerContent = (
     <Box sx={{ overflow: 'auto' }}>
@@ -74,43 +61,54 @@ const DashboardLayout = () => {
           <ListItemIcon><DashboardIcon /></ListItemIcon>
           <ListItemText primary="Dashboard" />
         </ListItem>
-        <ListItem onClick={() => navigateTo('/categories')} sx={{ cursor: 'pointer' }}>
-          <ListItemIcon><CategoryIcon /></ListItemIcon>
-          <ListItemText primary="Categories" />
-        </ListItem>
-        <ListItem onClick={() => navigateTo('/topics')} sx={{ cursor: 'pointer' }}>
-          <ListItemIcon><TopicIcon /></ListItemIcon>
-          <ListItemText primary="Topics" />
-        </ListItem>
-        <ListItem onClick={() => navigateTo('/scenarios')} sx={{ cursor: 'pointer' }}>
-          <ListItemIcon><ForumIcon /></ListItemIcon>
-          <ListItemText primary="Scenarios" />
-        </ListItem>
-        <ListItem onClick={() => navigateTo('/personas')} sx={{ cursor: 'pointer' }}>
-          <ListItemIcon><PersonIcon /></ListItemIcon>
-          <ListItemText primary="Personas" />
-        </ListItem>
+
+        {/* Admin and Manager only navigation items */}
+        {isAdminOrManager && (
+          <>
+            <ListItem onClick={() => navigateTo('/categories')} sx={{ cursor: 'pointer' }}>
+              <ListItemIcon><CategoryIcon /></ListItemIcon>
+              <ListItemText primary="Categories" />
+            </ListItem>
+            <ListItem onClick={() => navigateTo('/topics')} sx={{ cursor: 'pointer' }}>
+              <ListItemIcon><TopicIcon /></ListItemIcon>
+              <ListItemText primary="Topics" />
+            </ListItem>
+            <ListItem onClick={() => navigateTo('/scenarios')} sx={{ cursor: 'pointer' }}>
+              <ListItemIcon><ForumIcon /></ListItemIcon>
+              <ListItemText primary="Scenarios" />
+            </ListItem>
+            <ListItem onClick={() => navigateTo('/personas')} sx={{ cursor: 'pointer' }}>
+              <ListItemIcon><PersonIcon /></ListItemIcon>
+              <ListItemText primary="Personas" />
+            </ListItem>
+          </>
+        )}
       </List>
+
+      {/* Admin and Manager only sections */}
+      {isAdminOrManager && (
+        <>
+          <Divider />
+          <List>
+            <ListItem onClick={() => navigateTo('/assignments')} sx={{ cursor: 'pointer' }}>
+              <ListItemIcon><AssignmentIcon /></ListItemIcon>
+              <ListItemText primary="Assignments" />
+            </ListItem>
+            <ListItem onClick={() => navigateTo('/users')} sx={{ cursor: 'pointer' }}>
+              <ListItemIcon><PeopleIcon /></ListItemIcon>
+              <ListItemText primary="Users" />
+            </ListItem>
+          </List>
+        </>
+      )}
+
       <Divider />
       <List>
-        <ListItem onClick={() => navigateTo('/assignments')} sx={{ cursor: 'pointer' }}>
-          <ListItemIcon><AssignmentIcon /></ListItemIcon>
-          <ListItemText primary="Assignments" />
-        </ListItem>
-        <ListItem onClick={() => navigateTo('/users')} sx={{ cursor: 'pointer' }}>
-          <ListItemIcon><PeopleIcon /></ListItemIcon>
-          <ListItemText primary="Users" />
-        </ListItem>
-      </List>
-      <Divider />
-      <List>
-        <ListItem 
-          onClick={() => {
-            if (logout) {
-              logout();
-              navigate('/login');
-            }
-          }} 
+        <ListItem
+          onClick={async () => {
+            await signOut();
+            navigate('/login');
+          }}
           sx={{ cursor: 'pointer' }}
         >
           <ListItemIcon><LogoutIcon /></ListItemIcon>
@@ -138,9 +136,9 @@ const DashboardLayout = () => {
           </Typography>
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
             <Typography variant="body1" sx={{ mr: 1 }}>
-              First Last
+              {userProfile?.name || user?.email || 'User'}
             </Typography>
-            <IconButton 
+            <IconButton
               color="inherit"
               size="small"
               sx={{ ml: 1 }}
