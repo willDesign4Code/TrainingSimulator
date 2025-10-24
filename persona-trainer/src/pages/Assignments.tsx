@@ -83,12 +83,11 @@ const Assignments = () => {
     try {
       setLoading(true);
 
-      // Fetch assignments - try without content_type filter first
+      // Fetch assignments - without ordering by created_at since it may not exist
       console.log('Fetching assignments...');
       const { data: assignmentsData, error: assignmentsError } = await supabase
         .from('content_assignments')
-        .select('*')
-        .order('created_at', { ascending: false });
+        .select('*');
 
       if (assignmentsError) {
         console.error('Assignments error:', assignmentsError);
@@ -115,7 +114,7 @@ const Assignments = () => {
             assigned_users: assignment.assigned_users || [],
             is_active: assignment.is_active || false,
             assigned_by: assignment.assigned_by,
-            created_at: assignment.created_at,
+            created_at: new Date().toISOString(), // Use current date since created_at may not exist
             category_name: categoryData?.name || 'Unknown Category',
             user_count: (assignment.assigned_users || []).length
           };
