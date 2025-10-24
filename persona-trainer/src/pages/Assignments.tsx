@@ -363,7 +363,7 @@ const Assignments = () => {
         </Button>
       </Box>
 
-      <TableContainer component={Paper}>
+      <TableContainer component={Paper} sx={{ width: '100%' }}>
         <Table>
           <TableHead>
             <TableRow>
