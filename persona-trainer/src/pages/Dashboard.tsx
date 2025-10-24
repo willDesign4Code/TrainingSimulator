@@ -12,7 +12,8 @@ import {
   Divider,
   LinearProgress,
   CircularProgress,
-  Alert
+  Alert,
+  Chip
 } from '@mui/material';
 import HomeIcon from '@mui/icons-material/Home';
 import AssignmentIcon from '@mui/icons-material/Assignment';
@@ -22,54 +23,107 @@ import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import TrainingChatModal from '../components/training/TrainingChatModal';
 import { supabase } from '../services/supabase/client';
+import { useAuth } from '../contexts/AuthContext';
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [chatModalOpen, setChatModalOpen] = useState(false);
   const [selectedTraining, setSelectedTraining] = useState<{ id: string; title: string } | null>(null);
   const [scenarios, setScenarios] = useState<any[]>([]);
+  const [assignments, setAssignments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch available scenarios from Supabase
+  // Fetch user's active assignments and available scenarios
   useEffect(() => {
-    fetchScenarios();
-  }, []);
+    if (user?.id) {
+      fetchUserData();
+    }
+  }, [user?.id]);
 
-  const fetchScenarios = async () => {
+  const fetchUserData = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('scenarios')
+
+      // Fetch active assignments for this user
+      const { data: assignmentsData, error: assignmentsError } = await supabase
+        .from('content_assignments')
         .select(`
           *,
-          topic:topics(
+          category:categories!content_id(
+            id,
             name,
-            category:categories(name)
+            details
           )
         `)
-        .eq('is_public', true)
-        .order('created_at', { ascending: false });
+        .eq('is_active', true)
+        .contains('assigned_users', [user?.id])
+        .eq('content_type', 'category');
 
-      if (error) throw error;
-      setScenarios(data || []);
+      if (assignmentsError) throw assignmentsError;
+
+      // For each category assignment, fetch the scenarios
+      const categoriesWithScenarios = await Promise.all(
+        (assignmentsData || []).map(async (assignment) => {
+          if (!assignment.category) return null;
+
+          // Fetch topics for this category
+          const { data: topicsData } = await supabase
+            .from('topics')
+            .select('id')
+            .eq('category_id', assignment.category.id);
+
+          if (!topicsData || topicsData.length === 0) return {
+            ...assignment,
+            scenarios: []
+          };
+
+          const topicIds = topicsData.map(t => t.id);
+
+          // Fetch scenarios for these topics
+          const { data: scenariosData } = await supabase
+            .from('scenarios')
+            .select(`
+              *,
+              topic:topics(
+                name,
+                category:categories(name)
+              )
+            `)
+            .in('topic_id', topicIds);
+
+          return {
+            ...assignment,
+            scenarios: scenariosData || []
+          };
+        })
+      );
+
+      const validAssignments = categoriesWithScenarios.filter(a => a !== null);
+      setAssignments(validAssignments);
+
+      // Flatten all scenarios from assignments
+      const allScenarios = validAssignments.flatMap(a => a.scenarios || []);
+      setScenarios(allScenarios);
+
       setError(null);
     } catch (err) {
-      console.error('Error fetching scenarios:', err);
-      setError('Failed to load training scenarios');
+      console.error('Error fetching user data:', err);
+      setError('Failed to load your assignments');
     } finally {
       setLoading(false);
     }
   };
 
-  const assignedTrainings = scenarios;  // Show all scenarios for now
+  const assignedTrainings = scenarios;
   const recentSessions: any[] = [];  // Empty for now
 
   const stats = {
     completedSessions: 0,
-    assignedTrainings: scenarios.length,
-    averageScore: 0,
-    categoriesAvailable: 0
+    assignedTrainings: assignments.length,
+    availableScenarios: scenarios.length,
+    averageScore: 0
   };
 
   // Common styles for metric cards
@@ -110,7 +164,7 @@ const Dashboard = () => {
         >
           <CategoryIcon sx={{ fontSize: 40, mb: 1 }} />
           <Typography variant="h4" fontWeight="bold">
-            {stats.categoriesAvailable}
+            {stats.assignedTrainings}
           </Typography>
           <Typography variant="body1">
             Assigned Categories
