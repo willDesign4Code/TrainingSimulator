@@ -86,28 +86,36 @@ const Assignments = () => {
       // Fetch assignments
       const { data: assignmentsData, error: assignmentsError } = await supabase
         .from('content_assignments')
-        .select(`
-          *,
-          category:categories!content_id(name)
-        `)
+        .select('*')
         .eq('content_type', 'category')
         .order('created_at', { ascending: false });
 
       if (assignmentsError) throw assignmentsError;
 
-      // Transform assignments data
-      const transformedAssignments = (assignmentsData || []).map((assignment: any) => ({
-        id: assignment.id,
-        assignment_name: assignment.assignment_name || 'Untitled Assignment',
-        content_type: assignment.content_type,
-        content_id: assignment.content_id,
-        assigned_users: assignment.assigned_users || [],
-        is_active: assignment.is_active || false,
-        assigned_by: assignment.assigned_by,
-        created_at: assignment.created_at,
-        category_name: assignment.category?.name || 'Unknown Category',
-        user_count: (assignment.assigned_users || []).length
-      }));
+      // Fetch category names for each assignment
+      const transformedAssignments = await Promise.all(
+        (assignmentsData || []).map(async (assignment: any) => {
+          // Fetch the category name
+          const { data: categoryData } = await supabase
+            .from('categories')
+            .select('name')
+            .eq('id', assignment.content_id)
+            .single();
+
+          return {
+            id: assignment.id,
+            assignment_name: assignment.assignment_name || 'Untitled Assignment',
+            content_type: assignment.content_type,
+            content_id: assignment.content_id,
+            assigned_users: assignment.assigned_users || [],
+            is_active: assignment.is_active || false,
+            assigned_by: assignment.assigned_by,
+            created_at: assignment.created_at,
+            category_name: categoryData?.name || 'Unknown Category',
+            user_count: (assignment.assigned_users || []).length
+          };
+        })
+      );
 
       setAssignments(transformedAssignments);
 

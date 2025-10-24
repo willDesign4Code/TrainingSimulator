@@ -49,33 +49,41 @@ const Dashboard = () => {
       // Fetch active assignments for this user
       const { data: assignmentsData, error: assignmentsError } = await supabase
         .from('content_assignments')
-        .select(`
-          *,
-          category:categories!content_id(
-            id,
-            name,
-            details
-          )
-        `)
+        .select('*')
         .eq('is_active', true)
         .contains('assigned_users', [user?.id])
         .eq('content_type', 'category');
 
       if (assignmentsError) throw assignmentsError;
 
-      // For each category assignment, fetch the scenarios
+      if (!assignmentsData || assignmentsData.length === 0) {
+        setAssignments([]);
+        setScenarios([]);
+        setLoading(false);
+        return;
+      }
+
+      // Fetch category details for each assignment
       const categoriesWithScenarios = await Promise.all(
-        (assignmentsData || []).map(async (assignment) => {
-          if (!assignment.category) return null;
+        assignmentsData.map(async (assignment) => {
+          // Fetch the category details
+          const { data: categoryData } = await supabase
+            .from('categories')
+            .select('id, name, details')
+            .eq('id', assignment.content_id)
+            .single();
+
+          if (!categoryData) return null;
 
           // Fetch topics for this category
           const { data: topicsData } = await supabase
             .from('topics')
             .select('id')
-            .eq('category_id', assignment.category.id);
+            .eq('category_id', categoryData.id);
 
           if (!topicsData || topicsData.length === 0) return {
             ...assignment,
+            category: categoryData,
             scenarios: []
           };
 
@@ -95,6 +103,7 @@ const Dashboard = () => {
 
           return {
             ...assignment,
+            category: categoryData,
             scenarios: scenariosData || []
           };
         })
