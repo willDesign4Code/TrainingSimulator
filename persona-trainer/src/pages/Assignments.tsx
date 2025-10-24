@@ -83,14 +83,19 @@ const Assignments = () => {
     try {
       setLoading(true);
 
-      // Fetch assignments
+      // Fetch assignments - try without content_type filter first
+      console.log('Fetching assignments...');
       const { data: assignmentsData, error: assignmentsError } = await supabase
         .from('content_assignments')
         .select('*')
-        .eq('content_type', 'category')
         .order('created_at', { ascending: false });
 
-      if (assignmentsError) throw assignmentsError;
+      if (assignmentsError) {
+        console.error('Assignments error:', assignmentsError);
+        throw assignmentsError;
+      }
+
+      console.log('Assignments fetched:', assignmentsData);
 
       // Fetch category names for each assignment
       const transformedAssignments = await Promise.all(
@@ -105,7 +110,7 @@ const Assignments = () => {
           return {
             id: assignment.id,
             assignment_name: assignment.assignment_name || 'Untitled Assignment',
-            content_type: assignment.content_type,
+            content_type: 'category' as const,
             content_id: assignment.content_id,
             assigned_users: assignment.assigned_users || [],
             is_active: assignment.is_active || false,
@@ -119,28 +124,43 @@ const Assignments = () => {
 
       setAssignments(transformedAssignments);
 
-      // Fetch categories
+      // Fetch categories - remove is_public filter to show all categories
+      console.log('Fetching categories...');
       const { data: categoriesData, error: categoriesError } = await supabase
         .from('categories')
         .select('id, name')
-        .eq('is_public', true)
         .order('name', { ascending: true });
 
-      if (categoriesError) throw categoriesError;
+      if (categoriesError) {
+        console.error('Categories error:', categoriesError);
+        throw categoriesError;
+      }
+      console.log('Categories fetched:', categoriesData);
       setCategories(categoriesData || []);
 
-      // Fetch users
+      // Fetch users - get all users
+      console.log('Fetching users...');
       const { data: usersData, error: usersError } = await supabase
         .from('users')
         .select('id, name, email')
         .order('name', { ascending: true });
 
-      if (usersError) throw usersError;
+      if (usersError) {
+        console.error('Users error:', usersError);
+        throw usersError;
+      }
+      console.log('Users fetched:', usersData);
       setUsers(usersData || []);
 
       setError(null);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error fetching data:', err);
+      console.error('Error details:', {
+        message: err.message,
+        code: err.code,
+        details: err.details,
+        hint: err.hint
+      });
       setError('Failed to load assignments. Please try again.');
     } finally {
       setLoading(false);
@@ -202,12 +222,13 @@ const Assignments = () => {
 
       const assignmentData = {
         assignment_name: formData.assignment_name.trim(),
-        content_type: 'category',
         content_id: formData.category_id,
         assigned_users: formData.selected_users,
         assigned_by: user?.id,
         is_active: false // Always create as inactive
       };
+
+      console.log('Saving assignment:', assignmentData);
 
       if (editingAssignment) {
         // Update existing assignment
@@ -216,21 +237,33 @@ const Assignments = () => {
           .update(assignmentData)
           .eq('id', editingAssignment.id);
 
-        if (error) throw error;
+        if (error) {
+          console.error('Update error:', error);
+          throw error;
+        }
       } else {
         // Create new assignment
         const { error } = await supabase
           .from('content_assignments')
           .insert([assignmentData]);
 
-        if (error) throw error;
+        if (error) {
+          console.error('Insert error:', error);
+          throw error;
+        }
       }
 
       await fetchData();
       handleCloseDialog();
       setError(null);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error saving assignment:', err);
+      console.error('Error details:', {
+        message: err.message,
+        code: err.code,
+        details: err.details,
+        hint: err.hint
+      });
       setError(`Failed to ${editingAssignment ? 'update' : 'create'} assignment. Please try again.`);
     } finally {
       setSaving(false);
