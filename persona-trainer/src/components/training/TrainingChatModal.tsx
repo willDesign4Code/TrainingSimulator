@@ -27,6 +27,7 @@ import openAIService from '../../services/ai/openai';
 import { supabase } from '../../services/supabase/client';
 import { scoreConversation, Rubric, ScoringResult } from '../../services/ai/scoring';
 import ScoringResultsModal from './ScoringResultsModal';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface Message {
   id: string;
@@ -44,6 +45,7 @@ interface TrainingChatModalProps {
 }
 
 const TrainingChatModal = ({ open, onClose, trainingTitle, scenarioId }: TrainingChatModalProps) => {
+  const { user } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -53,6 +55,7 @@ const TrainingChatModal = ({ open, onClose, trainingTitle, scenarioId }: Trainin
   const [audioQueue, setAudioQueue] = useState<HTMLAudioElement[]>([]);
   const [speechSpeed, setSpeechSpeed] = useState(1.15); // Default speed from earlier change
   const [speedAnchorEl, setSpeedAnchorEl] = useState<HTMLButtonElement | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(null);
 
   // Scoring state
   const [rubrics, setRubrics] = useState<Rubric[]>([]);
@@ -364,6 +367,54 @@ ${persona.emotional_state ? `Current emotional state: ${persona.emotional_state}
     }
   };
 
+  // Create or update training session in database
+  const saveTrainingSession = async (score?: number) => {
+    if (!user?.id || !scenarioId) return;
+
+    try {
+      const sessionData = {
+        user_id: user.id,
+        scenario_id: scenarioId,
+        status: 'completed',
+        completed_at: new Date().toISOString(),
+        session_data: {
+          messages: messages.map(m => ({
+            role: m.role,
+            content: m.content,
+            timestamp: m.timestamp
+          })),
+          rubrics: rubrics,
+          scoring_result: scoringResult
+        },
+        score: score
+      };
+
+      // Check if session already exists (user might have started but not completed)
+      if (sessionId) {
+        // Update existing session
+        const { error } = await supabase
+          .from('training_sessions')
+          .update(sessionData)
+          .eq('id', sessionId);
+
+        if (error) throw error;
+      } else {
+        // Create new session
+        const { data, error } = await supabase
+          .from('training_sessions')
+          .insert([{ ...sessionData, started_at: new Date().toISOString() }])
+          .select()
+          .single();
+
+        if (error) throw error;
+        if (data) setSessionId(data.id);
+      }
+    } catch (err) {
+      console.error('Error saving training session:', err);
+      // Don't block the user from closing if save fails
+    }
+  };
+
   const handleEndSession = async () => {
     // Stop all audio
     audioQueue.forEach(audio => {
@@ -393,6 +444,9 @@ ${persona.emotional_state ? `Current emotional state: ${persona.emotional_state}
 
         const result = await scoreConversation(conversationTranscript, rubrics);
         setScoringResult(result);
+
+        // Save training session with score
+        await saveTrainingSession(result.total_score);
       } catch (err) {
         console.error('Error scoring conversation:', err);
         setScoringError(err instanceof Error ? err.message : 'Failed to score conversation');
@@ -400,12 +454,13 @@ ${persona.emotional_state ? `Current emotional state: ${persona.emotional_state}
         setIsScoring(false);
       }
     } else {
-      // No rubrics - just close
+      // No rubrics - save session and close
+      await saveTrainingSession();
       onClose();
     }
   };
 
-  const handleCloseScoringModal = () => {
+  const handleCloseScoringModal = async () => {
     setShowScoringModal(false);
     setScoringResult(null);
     setScoringError(null);
@@ -416,9 +471,10 @@ ${persona.emotional_state ? `Current emotional state: ${persona.emotional_state}
     <>
       <Dialog
         open={open}
-        onClose={handleEndSession}
+        onClose={() => {}} // Prevent closing via backdrop or ESC key
         maxWidth="md"
         fullWidth
+        disableEscapeKeyDown
         PaperProps={{
           sx: {
             height: '80vh',
@@ -452,9 +508,6 @@ ${persona.emotional_state ? `Current emotional state: ${persona.emotional_state}
               {isListening ? <MicIcon /> : <MicOffIcon />}
             </IconButton>
           </Tooltip>
-          <IconButton onClick={handleEndSession}>
-            <CloseIcon />
-          </IconButton>
         </Box>
       </DialogTitle>
 
