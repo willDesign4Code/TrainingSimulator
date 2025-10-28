@@ -124,19 +124,26 @@ const Assignments = () => {
 
       setAssignments(transformedAssignments);
 
-      // Fetch categories - remove is_public filter to show all categories
+      // Fetch categories - respect visibility rules
+      // Only show categories that are public OR created by the current user
       console.log('Fetching categories...');
-      const { data: categoriesData, error: categoriesError } = await supabase
-        .from('categories')
-        .select('id, name')
-        .order('name', { ascending: true });
+      if (!user) {
+        console.error('No user logged in');
+        setCategories([]);
+      } else {
+        const { data: categoriesData, error: categoriesError } = await supabase
+          .from('categories')
+          .select('id, name')
+          .or(`is_public.eq.true,created_by.eq.${user.id}`)
+          .order('name', { ascending: true });
 
-      if (categoriesError) {
-        console.error('Categories error:', categoriesError);
-        throw categoriesError;
+        if (categoriesError) {
+          console.error('Categories error:', categoriesError);
+          throw categoriesError;
+        }
+        console.log('Categories fetched:', categoriesData);
+        setCategories(categoriesData || []);
       }
-      console.log('Categories fetched:', categoriesData);
-      setCategories(categoriesData || []);
 
       // Fetch users - get all users
       console.log('Fetching users...');

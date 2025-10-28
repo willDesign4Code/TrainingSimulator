@@ -50,14 +50,21 @@ const TopicCard: React.FC<TopicProps> = ({
         overflow: 'hidden'
       }}
     >
-      <Box sx={{ position: 'relative', height: '160px', overflow: 'hidden' }}>
-        <CardMedia
-          component="img"
-          height="160"
-          image={imageUrl || 'https://source.unsplash.com/random/400x200/?training'}
-          alt={name}
-          sx={{ objectFit: 'cover' }}
-        />
+      <Box sx={{
+        position: 'relative',
+        height: '160px',
+        overflow: 'hidden',
+        bgcolor: imageUrl ? 'transparent' : 'grey.500'
+      }}>
+        {imageUrl && (
+          <CardMedia
+            component="img"
+            height="160"
+            image={imageUrl}
+            alt={name}
+            sx={{ objectFit: 'cover' }}
+          />
+        )}
       </Box>
       <CardContent sx={{ flexGrow: 1, bgcolor: 'background.paper' }}>
         <Typography gutterBottom variant="h5" component="div">

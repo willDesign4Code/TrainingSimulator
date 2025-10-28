@@ -5,6 +5,7 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Categories from './pages/Categories';
 import CategoryDetails from './pages/CategoryDetails';
+import CategoryTraining from './pages/CategoryTraining';
 import TopicDetails from './pages/TopicDetails';
 import Personas from './pages/Personas';
 import Assignments from './pages/Assignments';
@@ -55,6 +56,7 @@ function App() {
             <Route path="categories" element={<Categories />} />
             <Route path="categories/:id" element={<CategoryDetails />} />
             <Route path="categories/:id/edit" element={<div>Edit Category (Coming Soon)</div>} />
+            <Route path="training/category/:id" element={<CategoryTraining />} />
             <Route path="topics" element={<div>Topics (Coming Soon)</div>} />
             <Route path="topics/:id" element={<TopicDetails />} />
             <Route path="scenarios" element={<div>Scenarios (Coming Soon)</div>} />

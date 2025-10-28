@@ -6,20 +6,10 @@ import {
   Button,
   TextField,
   InputAdornment,
-  IconButton,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
-  Fab,
-  Chip,
-  FormControl,
-  FormControlLabel,
-  InputLabel,
-  Select,
-  MenuItem,
-  SelectChangeEvent,
-  Switch,
   Divider,
   Alert,
   CircularProgress
@@ -27,41 +17,49 @@ import {
 import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import EditIcon from '@mui/icons-material/Edit';
 import TopicCard from '../components/topics/TopicCard';
 import { supabase } from '../services/supabase/client';
+import { useAuth } from '../contexts/AuthContext';
+
+interface TopicWithScenarios {
+  id: string;
+  name: string;
+  details: string;
+  user_role: string;
+  scenarioCount: number;
+}
 
 const CategoryDetails = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { userProfile } = useAuth();
+
   const [category, setCategory] = useState<any | null>(null);
-  const [topics, setTopics] = useState<any[]>([]);
+  const [topics, setTopics] = useState<TopicWithScenarios[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
-  const [searchTerm, setSearchTerm] = useState('');
-  const [openAddDialog, setOpenAddDialog] = useState(false);
-  const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
-  const [openEditCategoryDialog, setOpenEditCategoryDialog] = useState(false);
-  const [topicToDelete, setTopicToDelete] = useState<string | null>(null);
-  const [editingTopicId, setEditingTopicId] = useState<string | null>(null);
-  const [roleFilter, setRoleFilter] = useState<string>('');
-  const [validationErrors, setValidationErrors] = useState<{[key: string]: string}>({});
+
+  // Admin dialogs state
+  const [openAddTopicDialog, setOpenAddTopicDialog] = useState(false);
+  const [openEditTopicDialog, setOpenEditTopicDialog] = useState(false);
+  const [openDeleteTopicDialog, setOpenDeleteTopicDialog] = useState(false);
+  const [topicToEdit, setTopicToEdit] = useState<TopicWithScenarios | null>(null);
+  const [topicToDelete, setTopicToDelete] = useState<TopicWithScenarios | null>(null);
   const [saving, setSaving] = useState(false);
-  
-  // Form state for adding a new topic
+  const [searchTerm, setSearchTerm] = useState('');
+
+  // Form state for new topic
   const [newTopic, setNewTopic] = useState({
     name: '',
-    overview: '',
-    userRole: ''
+    details: '',
+    user_role: ''
   });
-  
-  // Form state for editing the category
-  const [editCategory, setEditCategory] = useState({
+
+  // Form state for editing topic
+  const [editTopic, setEditTopic] = useState({
     name: '',
     details: '',
-    imageUrl: '',
-    isPublic: true
+    user_role: ''
   });
   
   // Load category and topics data from Supabase
@@ -94,19 +92,23 @@ const CategoryDetails = () => {
 
         if (topicsError) throw topicsError;
 
-        // Fetch scenario counts for each topic
-        const topicsWithCounts = await Promise.all(
+        // Admin view: only fetch scenario counts
+        const topicsWithData = await Promise.all(
           (topicsData || []).map(async (topic) => {
             const { count } = await supabase
               .from('scenarios')
               .select('*', { count: 'exact', head: true })
               .eq('topic_id', topic.id);
-            return { ...topic, scenarioCount: count || 0 };
+
+            return {
+              ...topic,
+              scenarioCount: count || 0
+            };
           })
         );
 
         setCategory(categoryData as any);
-        setTopics(topicsWithCounts as any || []);
+        setTopics(topicsWithData);
         setError(null);
 
       } catch (err) {
@@ -117,149 +119,54 @@ const CategoryDetails = () => {
       }
     };
 
-    if (id) {
+    if (id && userProfile) {
       fetchData();
     }
-  }, [id]);
-  
-  // Filter topics based on search term and role filter
-  const filteredTopics = topics.filter(topic =>
-    (topic.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-     topic.details.toLowerCase().includes(searchTerm.toLowerCase())) &&
-    (roleFilter === '' || topic.user_role === roleFilter)
-  );
+  }, [id, userProfile]);
 
-  // Get unique user roles for filter
-  const uniqueRoles = Array.from(new Set(topics.map(topic => topic.user_role)));
-  
-  // Handle role filter change
-  const handleRoleFilterChange = (event: SelectChangeEvent) => {
-    setRoleFilter(event.target.value);
+  // Admin topic management handlers
+  const handleOpenAddTopicDialog = () => {
+    setNewTopic({ name: '', details: '', user_role: '' });
+    setOpenAddTopicDialog(true);
   };
-  
-  // Handle opening the add topic dialog
-  const handleOpenAddDialog = () => {
-    setOpenAddDialog(true);
+
+  const handleCloseAddTopicDialog = () => {
+    setOpenAddTopicDialog(false);
+    setNewTopic({ name: '', details: '', user_role: '' });
   };
-  
-  // Handle closing the add topic dialog
-  const handleCloseAddDialog = () => {
-    setOpenAddDialog(false);
-    setEditingTopicId(null);
-    setValidationErrors({});
-    // Reset form
-    setNewTopic({
-      name: '',
-      overview: '',
-      userRole: ''
-    });
-  };
-  
-  // Handle form input changes
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+
+  const handleNewTopicInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setNewTopic(prev => ({
-      ...prev,
-      [name]: value
-    }));
-
-    // Clear validation error when user starts typing
-    if (validationErrors[name]) {
-      setValidationErrors(prev => {
-        const newErrors = { ...prev };
-        delete newErrors[name];
-        return newErrors;
-      });
-    }
+    setNewTopic(prev => ({ ...prev, [name]: value }));
   };
 
-  // Validate field on blur
-  const handleFieldBlur = (fieldName: string) => {
-    const errors: {[key: string]: string} = {};
-
-    switch(fieldName) {
-      case 'name':
-        if (!newTopic.name.trim()) {
-          errors.name = 'Topic name is required';
-        }
-        break;
-      case 'overview':
-        if (!newTopic.overview.trim()) {
-          errors.overview = 'Overview is required - provide a brief description of this topic';
-        }
-        break;
-      case 'userRole':
-        if (!newTopic.userRole.trim()) {
-          errors.userRole = 'User role is required - specify the role trainees will assume';
-        }
-        break;
-    }
-
-    if (Object.keys(errors).length > 0) {
-      setValidationErrors(prev => ({ ...prev, ...errors }));
-    }
-  };
-  
-  // Handle adding or updating a topic
-  const handleAddTopic = async () => {
-    // Validate form
-    const errors: {[key: string]: string} = {};
-
-    if (!newTopic.name.trim()) {
-      errors.name = 'Topic name is required';
-    }
-    if (!newTopic.overview.trim()) {
-      errors.overview = 'Overview is required';
-    }
-    if (!newTopic.userRole.trim()) {
-      errors.userRole = 'User role is required';
-    }
-
-    if (Object.keys(errors).length > 0) {
-      setValidationErrors(errors);
+  const handleCreateTopic = async () => {
+    if (!newTopic.name.trim() || !newTopic.details.trim()) {
+      setError('Please fill in all required fields');
       return;
     }
 
     try {
       setSaving(true);
-      setValidationErrors({});
+      const { error: insertError } = await supabase
+        .from('topics')
+        .insert([{
+          category_id: id,
+          name: newTopic.name.trim(),
+          details: newTopic.details.trim(),
+          user_role: newTopic.user_role.trim() || null
+        }]);
 
-      const topicData = {
-        category_id: id!,
-        name: newTopic.name.trim(),
-        details: newTopic.overview.trim(),
-        user_role: newTopic.userRole.trim(),
-        is_public: true
-      };
+      if (insertError) throw insertError;
 
-      if (editingTopicId) {
-        // Update existing topic
-        const { error: updateError } = await supabase
-          .from('topics')
-          .update(topicData)
-          .eq('id', editingTopicId);
-
-        if (updateError) throw updateError;
-      } else {
-        // Create new topic
-        const { error: insertError } = await supabase
-          .from('topics')
-          .insert([topicData]);
-
-        if (insertError) throw insertError;
-      }
-
-      // Refresh topics list
-      const { data: topicsData, error: topicsError } = await supabase
+      // Refresh topics
+      const { data: topicsData } = await supabase
         .from('topics')
         .select('*')
         .eq('category_id', id)
         .order('created_at', { ascending: false });
 
-      if (topicsError) throw topicsError;
-
-      // Fetch scenario counts for each topic
-      const topicsWithCounts = await Promise.all(
+      const topicsWithData = await Promise.all(
         (topicsData || []).map(async (topic) => {
           const { count } = await supabase
             .from('scenarios')
@@ -269,121 +176,208 @@ const CategoryDetails = () => {
         })
       );
 
-      setTopics(topicsWithCounts);
+      setTopics(topicsWithData);
+      handleCloseAddTopicDialog();
       setError(null);
-      handleCloseAddDialog();
     } catch (err) {
-      console.error('Error saving topic:', err);
-      setError('Failed to save topic. Please try again.');
+      console.error('Error creating topic:', err);
+      setError('Failed to create topic');
     } finally {
       setSaving(false);
     }
   };
-  
-  // Handle opening the delete confirmation dialog
-  const handleOpenDeleteDialog = (topicId: string) => {
-    setTopicToDelete(topicId);
-    setOpenDeleteDialog(true);
-  };
-  
-  // Handle closing the delete confirmation dialog
-  const handleCloseDeleteDialog = () => {
-    setOpenDeleteDialog(false);
-    setTopicToDelete(null);
-  };
-  
-  // Handle deleting a topic
-  const handleDeleteTopic = () => {
-    if (topicToDelete) {
-      // Remove topic from list
-      setTopics(prev => prev.filter(topic => topic.id !== topicToDelete));
-      
-      // Close dialog
-      handleCloseDeleteDialog();
-    }
-  };
-  
-  // Handle viewing a topic's scenarios
-  const handleViewTopic = (topicId: string) => {
-    console.log('View topic clicked:', topicId);
-    // Navigate to the topic details page
-    navigate(`/topics/${topicId}`);
-  };
-  
-  // Handle editing a topic
-  const handleEditTopic = (topicId: string) => {
-    // Find the topic to edit
-    const topicToEdit = topics.find(topic => topic.id === topicId);
-    if (topicToEdit) {
-      setEditingTopicId(topicId);
-      // Populate the form with current topic data (map database fields)
-      setNewTopic({
-        name: topicToEdit.name || '',
-        overview: topicToEdit.details || '',
-        userRole: topicToEdit.user_role || ''
-      });
-      // Open the dialog
-      setOpenAddDialog(true);
-    }
-  };
-  
-  // Handle opening the edit category dialog
-  const handleOpenEditCategoryDialog = () => {
-    // Populate the form with current category data
-    setEditCategory({
-      name: category.name,
-      details: category.details,
-      imageUrl: category.imageUrl,
-      isPublic: category.isPublic
+
+  const handleOpenEditTopicDialog = (topic: TopicWithScenarios) => {
+    setTopicToEdit(topic);
+    setEditTopic({
+      name: topic.name,
+      details: topic.details,
+      user_role: topic.user_role || ''
     });
-    setOpenEditCategoryDialog(true);
+    setOpenEditTopicDialog(true);
   };
-  
-  // Handle closing the edit category dialog
-  const handleCloseEditCategoryDialog = () => {
-    setOpenEditCategoryDialog(false);
+
+  const handleCloseEditTopicDialog = () => {
+    setOpenEditTopicDialog(false);
+    setTopicToEdit(null);
   };
-  
-  // Handle edit category form input changes
-  const handleEditCategoryInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+
+  const handleEditTopicInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setEditCategory(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    setEditTopic(prev => ({ ...prev, [name]: value }));
   };
-  
-  // Handle edit category checkbox changes
-  const handleEditCategoryCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setEditCategory(prev => ({
-      ...prev,
-      isPublic: e.target.checked
-    }));
-  };
-  
-  // Handle updating the category
-  const handleUpdateCategory = () => {
-    // Validate form
-    if (!editCategory.name || !editCategory.details) {
-      // In a real app, you would show validation errors
+
+  const handleUpdateTopic = async () => {
+    if (!editTopic.name.trim() || !editTopic.details.trim() || !topicToEdit) {
+      setError('Please fill in all required fields');
       return;
     }
-    
-    // Update category
-    const updatedCategory = {
-      ...category,
-      name: editCategory.name,
-      details: editCategory.details,
-      imageUrl: editCategory.imageUrl,
-      isPublic: editCategory.isPublic
-    };
-    
-    // Update category in state
-    setCategory(updatedCategory);
-    
-    // Close dialog
-    handleCloseEditCategoryDialog();
+
+    try {
+      setSaving(true);
+      const { error: updateError } = await supabase
+        .from('topics')
+        .update({
+          name: editTopic.name.trim(),
+          details: editTopic.details.trim(),
+          user_role: editTopic.user_role.trim() || null
+        })
+        .eq('id', topicToEdit.id);
+
+      if (updateError) throw updateError;
+
+      // Refresh topics
+      const { data: topicsData } = await supabase
+        .from('topics')
+        .select('*')
+        .eq('category_id', id)
+        .order('created_at', { ascending: false });
+
+      const topicsWithData = await Promise.all(
+        (topicsData || []).map(async (topic) => {
+          const { count } = await supabase
+            .from('scenarios')
+            .select('*', { count: 'exact', head: true })
+            .eq('topic_id', topic.id);
+          return { ...topic, scenarioCount: count || 0 };
+        })
+      );
+
+      setTopics(topicsWithData);
+      handleCloseEditTopicDialog();
+      setError(null);
+    } catch (err) {
+      console.error('Error updating topic:', err);
+      setError('Failed to update topic');
+    } finally {
+      setSaving(false);
+    }
   };
+
+  const handleOpenDeleteTopicDialog = (topic: TopicWithScenarios) => {
+    setTopicToDelete(topic);
+    setOpenDeleteTopicDialog(true);
+  };
+
+  const handleCloseDeleteTopicDialog = () => {
+    setOpenDeleteTopicDialog(false);
+    setTopicToDelete(null);
+  };
+
+  const handleDeleteTopic = async () => {
+    if (!topicToDelete) return;
+
+    try {
+      setSaving(true);
+      const { error: deleteError } = await supabase
+        .from('topics')
+        .delete()
+        .eq('id', topicToDelete.id);
+
+      if (deleteError) throw deleteError;
+
+      // Refresh topics
+      const { data: topicsData } = await supabase
+        .from('topics')
+        .select('*')
+        .eq('category_id', id)
+        .order('created_at', { ascending: false });
+
+      const topicsWithData = await Promise.all(
+        (topicsData || []).map(async (topic) => {
+          const { count } = await supabase
+            .from('scenarios')
+            .select('*', { count: 'exact', head: true })
+            .eq('topic_id', topic.id);
+          return { ...topic, scenarioCount: count || 0 };
+        })
+      );
+
+      setTopics(topicsWithData);
+      handleCloseDeleteTopicDialog();
+      setError(null);
+    } catch (err) {
+      console.error('Error deleting topic:', err);
+      setError('Failed to delete topic. It may have associated scenarios.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Filter topics based on search term
+  const filteredTopics = topics.filter(topic =>
+    topic.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    topic.details.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  // Render admin view with topic cards
+  const renderAdminView = () => (
+    <Box>
+      {/* Search and Add Topic Button */}
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <TextField
+          placeholder="Search topics..."
+          variant="outlined"
+          size="small"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon />
+              </InputAdornment>
+            )
+          }}
+          sx={{ width: 300 }}
+        />
+        <Button
+          variant="contained"
+          startIcon={<AddIcon />}
+          onClick={handleOpenAddTopicDialog}
+        >
+          Add Topic
+        </Button>
+      </Box>
+
+      {/* Topic Cards Grid */}
+      {filteredTopics.length === 0 ? (
+        <Box sx={{ textAlign: 'center', py: 8 }}>
+          <Typography variant="h6" color="text.secondary" gutterBottom>
+            {topics.length === 0 ? 'No topics yet' : 'No topics match your search'}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            {topics.length === 0 ? 'Get started by adding your first topic' : 'Try adjusting your search terms'}
+          </Typography>
+        </Box>
+      ) : (
+        <Box sx={{
+          display: 'grid',
+          gridTemplateColumns: {
+            xs: '1fr',
+            sm: 'repeat(2, 1fr)',
+            md: 'repeat(3, 1fr)'
+          },
+          gap: 3
+        }}>
+          {filteredTopics.map((topic) => (
+            <TopicCard
+              key={topic.id}
+              id={topic.id}
+              name={topic.name}
+              overview={topic.details}
+              userRole={topic.user_role || 'All'}
+              imageUrl=""
+              scenarioCount={topic.scenarioCount}
+              onEdit={() => handleOpenEditTopicDialog(topic)}
+              onDelete={() => handleOpenDeleteTopicDialog(topic)}
+              onView={() => navigate(`/topics/${topic.id}`)}
+            />
+          ))}
+        </Box>
+      )}
+    </Box>
+  );
+
   
   if (loading) {
     return (
@@ -410,154 +404,46 @@ const CategoryDetails = () => {
   
   return (
     <Box sx={{ px: 3 }}>
-      {/* Header with back button and edit button */}
-      <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-        <IconButton 
+      {error && (
+        <Alert severity="error" onClose={() => setError(null)} sx={{ mb: 3 }}>
+          {error}
+        </Alert>
+      )}
+
+      {/* Back button */}
+      <Box sx={{ mb: 2 }}>
+        <Button
+          startIcon={<ArrowBackIcon />}
           onClick={() => navigate('/categories')}
-          sx={{ mr: 1 }}
+          sx={{ textTransform: 'none' }}
         >
-          <ArrowBackIcon />
-        </IconButton>
-        <Typography variant="h4" sx={{ flexGrow: 1 }}>
-          {category.name}
-        </Typography>
-        <Button 
-          variant="outlined" 
-          startIcon={<EditIcon />}
-          onClick={handleOpenEditCategoryDialog}
-        >
-          Edit Category
+          Back To Categories
         </Button>
       </Box>
-      
+
+      {/* Category title */}
+      <Typography variant="h4" gutterBottom>
+        {category.name}
+      </Typography>
+
       {/* Category details */}
       <Box sx={{ mb: 4 }}>
         <Typography variant="body1" color="text.secondary">
           {category.details}
         </Typography>
       </Box>
-      
+
       <Divider sx={{ mb: 4 }} />
-      
-      {/* Topics section header */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h5">
-          Topics
-        </Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={handleOpenAddDialog}
-        >
-          Add Topic
-        </Button>
-      </Box>
-      
-      {/* Search and filter */}
-      <Box sx={{ display: 'flex', mb: 3, flexWrap: 'wrap', gap: 2 }}>
-        <TextField
-          placeholder="Search topics..."
-          variant="outlined"
-          size="small"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <SearchIcon />
-              </InputAdornment>
-            ),
-          }}
-          sx={{ flexGrow: 1, maxWidth: { xs: '100%', sm: 400 } }}
-        />
-        
-        {uniqueRoles.length > 0 && (
-          <FormControl size="small" sx={{ minWidth: 200 }}>
-            <InputLabel id="role-filter-label">Filter by Role</InputLabel>
-            <Select
-              labelId="role-filter-label"
-              id="role-filter"
-              value={roleFilter}
-              label="Filter by Role"
-              onChange={handleRoleFilterChange}
-            >
-              <MenuItem value="">All Roles</MenuItem>
-              {uniqueRoles.map(role => (
-                <MenuItem key={role} value={role}>{role}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        )}
-      </Box>
-      
-      {/* Active filters */}
-      {roleFilter && (
-        <Box sx={{ mb: 3 }}>
-          <Chip 
-            label={`Role: ${roleFilter}`}
-            onDelete={() => setRoleFilter('')}
-            color="primary"
-            variant="outlined"
-          />
-        </Box>
-      )}
-      
-      {/* Topics grid */}
-      <Box sx={{ 
-        display: 'grid', 
-        gridTemplateColumns: { 
-          xs: '1fr', 
-          sm: 'repeat(2, 1fr)', 
-          md: 'repeat(3, 1fr)' 
-        },
-        gap: 3,
-        mb: 4
-      }}>
-        {filteredTopics.map((topic) => (
-          <TopicCard
-            key={topic.id}
-            id={topic.id}
-            name={topic.name}
-            overview={topic.details || ''}
-            userRole={topic.user_role || ''}
-            imageUrl={topic.image_url || ''}
-            scenarioCount={topic.scenarioCount || 0}
-            onView={handleViewTopic}
-            onEdit={handleEditTopic}
-            onDelete={handleOpenDeleteDialog}
-          />
-        ))}
-      </Box>
-      
-      {/* Empty state */}
-      {filteredTopics.length === 0 && (
-        <Box sx={{ textAlign: 'center', py: 8 }}>
-          <Typography variant="h6" color="text.secondary" gutterBottom>
-            No topics found
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            {topics.length === 0 
-              ? 'Get started by adding your first topic' 
-              : 'Try adjusting your search or filter criteria'}
-          </Typography>
-        </Box>
-      )}
-      
-      {/* Mobile FAB for adding topics */}
-      <Box sx={{ display: { sm: 'none' } }}>
-        <Fab
-          color="primary"
-          aria-label="add"
-          sx={{ position: 'fixed', bottom: 16, right: 16 }}
-          onClick={handleOpenAddDialog}
-        >
-          <AddIcon />
-        </Fab>
-      </Box>
-      
-      {/* Add/Edit Topic Dialog */}
-      <Dialog open={openAddDialog} onClose={handleCloseAddDialog} maxWidth="sm" fullWidth>
-        <DialogTitle>{editingTopicId ? 'Edit Topic' : 'Add New Topic'}</DialogTitle>
+
+      {/* Topics View */}
+      <Typography variant="h5" sx={{ mb: 3 }}>
+        Topics
+      </Typography>
+      {renderAdminView()}
+
+      {/* Add Topic Dialog */}
+      <Dialog open={openAddTopicDialog} onClose={handleCloseAddTopicDialog} maxWidth="sm" fullWidth>
+        <DialogTitle>Add New Topic</DialogTitle>
         <DialogContent>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
             <TextField
@@ -565,127 +451,111 @@ const CategoryDetails = () => {
               label="Topic Name"
               name="name"
               value={newTopic.name}
-              onChange={handleInputChange}
-              onBlur={() => handleFieldBlur('name')}
+              onChange={handleNewTopicInputChange}
               fullWidth
-              variant="outlined"
               required
-              error={!!validationErrors.name}
-              helperText={validationErrors.name || 'Enter a descriptive name for this topic'}
             />
             <TextField
-              label="Overview"
-              name="overview"
-              value={newTopic.overview}
-              onChange={handleInputChange}
-              onBlur={() => handleFieldBlur('overview')}
+              label="Topic Details"
+              name="details"
+              value={newTopic.details}
+              onChange={handleNewTopicInputChange}
               fullWidth
               multiline
               rows={3}
-              variant="outlined"
               required
-              error={!!validationErrors.overview}
-              helperText={validationErrors.overview || 'Provide a brief description of what this topic covers'}
             />
             <TextField
-              label="User Role"
-              name="userRole"
-              value={newTopic.userRole}
-              onChange={handleInputChange}
-              onBlur={() => handleFieldBlur('userRole')}
+              label="User Role (optional)"
+              name="user_role"
+              value={newTopic.user_role}
+              onChange={handleNewTopicInputChange}
               fullWidth
-              variant="outlined"
-              required
-              error={!!validationErrors.userRole}
-              helperText={validationErrors.userRole || 'The role that trainees will assume during scenarios (e.g., Customer Service Representative)'}
+              placeholder="e.g., manager, employee"
             />
           </Box>
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={handleCloseAddDialog} disabled={saving}>Cancel</Button>
+        <DialogActions>
+          <Button onClick={handleCloseAddTopicDialog} disabled={saving}>Cancel</Button>
           <Button
-            onClick={handleAddTopic}
+            onClick={handleCreateTopic}
             variant="contained"
-            disabled={saving || !newTopic.name || !newTopic.overview || !newTopic.userRole}
+            disabled={saving || !newTopic.name || !newTopic.details}
           >
-            {saving ? 'Saving...' : (editingTopicId ? 'Update Topic' : 'Add Topic')}
+            {saving ? 'Adding...' : 'Add Topic'}
           </Button>
         </DialogActions>
       </Dialog>
-      
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={openDeleteDialog} onClose={handleCloseDeleteDialog}>
-        <DialogTitle>Delete Topic</DialogTitle>
-        <DialogContent>
-          <Typography>
-            Are you sure you want to delete this topic? This action cannot be undone.
-          </Typography>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={handleCloseDeleteDialog}>Cancel</Button>
-          <Button onClick={handleDeleteTopic} color="error" variant="contained">
-            Delete
-          </Button>
-        </DialogActions>
-      </Dialog>
-      
-      {/* Edit Category Dialog */}
-      <Dialog open={openEditCategoryDialog} onClose={handleCloseEditCategoryDialog} maxWidth="sm" fullWidth>
-        <DialogTitle>Edit Category</DialogTitle>
+
+      {/* Edit Topic Dialog */}
+      <Dialog open={openEditTopicDialog} onClose={handleCloseEditTopicDialog} maxWidth="sm" fullWidth>
+        <DialogTitle>Edit Topic</DialogTitle>
         <DialogContent>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
             <TextField
               autoFocus
-              label="Category Name"
+              label="Topic Name"
               name="name"
-              value={editCategory.name}
-              onChange={handleEditCategoryInputChange}
+              value={editTopic.name}
+              onChange={handleEditTopicInputChange}
               fullWidth
-              variant="outlined"
               required
             />
             <TextField
-              label="Category Details"
+              label="Topic Details"
               name="details"
-              value={editCategory.details}
-              onChange={handleEditCategoryInputChange}
+              value={editTopic.details}
+              onChange={handleEditTopicInputChange}
               fullWidth
               multiline
               rows={3}
-              variant="outlined"
               required
             />
             <TextField
-              label="Image URL"
-              name="imageUrl"
-              value={editCategory.imageUrl}
-              onChange={handleEditCategoryInputChange}
+              label="User Role (optional)"
+              name="user_role"
+              value={editTopic.user_role}
+              onChange={handleEditTopicInputChange}
               fullWidth
-              variant="outlined"
-              placeholder="https://picsum.photos/400/200?random=123"
+              placeholder="e.g., manager, employee"
             />
-            <FormControl component="fieldset" variant="standard">
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={editCategory.isPublic}
-                    onChange={handleEditCategoryCheckboxChange}
-                    name="isPublic"
-                  />
-                }
-                label="Public Category"
-              />
-            </FormControl>
           </Box>
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={handleCloseEditCategoryDialog}>Cancel</Button>
-          <Button 
-            onClick={handleUpdateCategory} 
+        <DialogActions>
+          <Button onClick={handleCloseEditTopicDialog} disabled={saving}>Cancel</Button>
+          <Button
+            onClick={handleUpdateTopic}
             variant="contained"
-            disabled={!editCategory.name || !editCategory.details}
+            disabled={saving || !editTopic.name || !editTopic.details}
           >
-            Update Category
+            {saving ? 'Saving...' : 'Save Changes'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete Topic Confirmation Dialog */}
+      <Dialog open={openDeleteTopicDialog} onClose={handleCloseDeleteTopicDialog}>
+        <DialogTitle>Delete Topic?</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Are you sure you want to delete "{topicToDelete?.name}"? This action cannot be undone.
+          </Typography>
+          {topicToDelete && topicToDelete.scenarioCount > 0 && (
+            <Alert severity="warning" sx={{ mt: 2 }}>
+              This topic has {topicToDelete.scenarioCount} scenario{topicToDelete.scenarioCount !== 1 ? 's' : ''}.
+              You must delete all scenarios before deleting this topic.
+            </Alert>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDeleteTopicDialog} disabled={saving}>Cancel</Button>
+          <Button
+            onClick={handleDeleteTopic}
+            color="error"
+            variant="contained"
+            disabled={saving}
+          >
+            {saving ? 'Deleting...' : 'Delete'}
           </Button>
         </DialogActions>
       </Dialog>

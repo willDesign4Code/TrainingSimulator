@@ -28,9 +28,11 @@ import SearchIcon from '@mui/icons-material/Search';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import { supabase } from '../services/supabase/client';
 import type { Category } from '../services/supabase/client';
+import { useAuth } from '../contexts/AuthContext';
 
 const Categories = () => {
   const navigate = useNavigate();
+  const { user, userProfile } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [openDialog, setOpenDialog] = useState(false);
   const [openEditDialog, setOpenEditDialog] = useState(false);
@@ -61,15 +63,25 @@ const Categories = () => {
 
   // Fetch categories from Supabase
   useEffect(() => {
-    fetchCategories();
-  }, []);
+    if (user) {
+      fetchCategories();
+    }
+  }, [user]);
 
   const fetchCategories = async () => {
+    if (!user) return;
+
     try {
       setLoading(true);
+
+      // Fetch categories based on visibility rules:
+      // - Public categories (is_public = true) are visible to everyone
+      // - Private categories (is_public = false) are only visible to their creator
+      // - Admins and managers can see all public categories + their own private ones
       const { data, error } = await supabase
         .from('categories')
         .select('*')
+        .or(`is_public.eq.true,created_by.eq.${user.id}`)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -184,6 +196,11 @@ const Categories = () => {
       return;
     }
 
+    if (!user) {
+      setError('You must be logged in to create a category.');
+      return;
+    }
+
     try {
       setSaving(true);
       setValidationErrors({});
@@ -194,7 +211,8 @@ const Categories = () => {
           name: newCategory.name.trim(),
           details: newCategory.details.trim(),
           image_url: newCategory.imageUrl.trim() || null,
-          is_public: newCategory.isPublic
+          is_public: newCategory.isPublic,
+          created_by: user.id  // Track who created the category
         }]);
 
       if (error) throw error;

@@ -24,6 +24,7 @@ import ForumIcon from '@mui/icons-material/Forum';
 import PersonIcon from '@mui/icons-material/Person';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import LogoutIcon from '@mui/icons-material/Logout';
+import HistoryIcon from '@mui/icons-material/History';
 import { useAuth } from '../../contexts/AuthContext';
 
 const drawerWidth = 240;
@@ -50,21 +51,22 @@ const DashboardLayout = () => {
 
   const drawerContent = (
     <Box sx={{ overflow: 'auto' }}>
-      <Box sx={{ p: 2, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <Typography variant="h6" color="primary" fontWeight="bold">
-          Persona Trainer
-        </Typography>
-      </Box>
-      <Divider />
       <List>
         <ListItem onClick={() => navigateTo('/')} sx={{ cursor: 'pointer' }}>
           <ListItemIcon><DashboardIcon /></ListItemIcon>
           <ListItemText primary="Dashboard" />
         </ListItem>
+        <ListItem onClick={() => navigateTo('/history')} sx={{ cursor: 'pointer' }}>
+          <ListItemIcon><HistoryIcon /></ListItemIcon>
+          <ListItemText primary="Training History" />
+        </ListItem>
+      </List>
 
-        {/* Admin and Manager only navigation items */}
-        {isAdminOrManager && (
-          <>
+      {/* Admin and Manager only sections */}
+      {isAdminOrManager && (
+        <>
+          <Divider />
+          <List>
             <ListItem onClick={() => navigateTo('/categories')} sx={{ cursor: 'pointer' }}>
               <ListItemIcon><CategoryIcon /></ListItemIcon>
               <ListItemText primary="Categories" />
@@ -81,13 +83,7 @@ const DashboardLayout = () => {
               <ListItemIcon><PersonIcon /></ListItemIcon>
               <ListItemText primary="Personas" />
             </ListItem>
-          </>
-        )}
-      </List>
-
-      {/* Admin and Manager only sections */}
-      {isAdminOrManager && (
-        <>
+          </List>
           <Divider />
           <List>
             <ListItem onClick={() => navigateTo('/assignments')} sx={{ cursor: 'pointer' }}>
@@ -132,7 +128,7 @@ const DashboardLayout = () => {
             <MenuIcon />
           </IconButton>
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
-            Persona Trainer
+            Scenario Sim Trainer
           </Typography>
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
             <Typography variant="body1" sx={{ mr: 1 }}>

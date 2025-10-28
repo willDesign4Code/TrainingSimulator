@@ -611,21 +611,12 @@ const TopicDetails = () => {
       </Box>
       
       {/* Topic details */}
-      <Box sx={{ mb: 2 }}>
+      <Box sx={{ mb: 4 }}>
         <Typography variant="body1" color="text.secondary">
           {topic.overview}
         </Typography>
       </Box>
-      
-      <Box sx={{ mb: 4 }}>
-        <Chip 
-          label={`Role: ${topic.userRole}`} 
-          color="secondary" 
-          variant="outlined" 
-          sx={{ mr: 1 }}
-        />
-      </Box>
-      
+
       <Divider sx={{ mb: 4 }} />
       
       {/* Scenarios section header */}
@@ -710,7 +701,6 @@ const TopicDetails = () => {
             overview={scenario.details || ''}
             customerPersona={scenario.persona?.name || 'Unknown Persona'}
             imageUrl={scenario.persona?.image_url || ''}
-            difficulty="Medium"
             onView={handleViewScenario}
             onEdit={handleEditScenario}
             onDelete={handleOpenDeleteDialog}

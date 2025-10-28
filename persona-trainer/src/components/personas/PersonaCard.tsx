@@ -44,14 +44,21 @@ const PersonaCard: React.FC<PersonaProps> = ({
         overflow: 'hidden'
       }}
     >
-      <Box sx={{ position: 'relative', height: '200px', overflow: 'hidden' }}>
-        <CardMedia
-          component="img"
-          height="200"
-          image={imageUrl || 'https://source.unsplash.com/random/400x200/?portrait'}
-          alt={name}
-          sx={{ objectFit: 'cover' }}
-        />
+      <Box sx={{
+        position: 'relative',
+        height: '200px',
+        overflow: 'hidden',
+        bgcolor: imageUrl ? 'transparent' : 'grey.500'
+      }}>
+        {imageUrl && (
+          <CardMedia
+            component="img"
+            height="200"
+            image={imageUrl}
+            alt={name}
+            sx={{ objectFit: 'cover' }}
+          />
+        )}
       </Box>
       <CardContent sx={{ flexGrow: 1, bgcolor: 'background.paper' }}>
         <Typography gutterBottom variant="h5" component="div">
