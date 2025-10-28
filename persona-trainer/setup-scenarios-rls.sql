@@ -12,6 +12,7 @@ CREATE INDEX IF NOT EXISTS idx_scenarios_persona_id ON scenarios(persona_id);
 DROP POLICY IF EXISTS "Users can view public scenarios" ON scenarios;
 DROP POLICY IF EXISTS "Users can view their own scenarios" ON scenarios;
 DROP POLICY IF EXISTS "Users can view scenarios for assigned topics" ON scenarios;
+DROP POLICY IF EXISTS "Users can view scenarios for assigned content" ON scenarios;
 DROP POLICY IF EXISTS "Users can create scenarios" ON scenarios;
 DROP POLICY IF EXISTS "Users can update their own scenarios" ON scenarios;
 DROP POLICY IF EXISTS "Users can delete their own scenarios" ON scenarios;
@@ -41,14 +42,14 @@ USING (
     SELECT 1 FROM content_assignments
     WHERE (
       -- Assigned to this specific scenario
-      (content_type = 'scenario' AND content_id = scenarios.id::text)
+      (content_type = 'scenario' AND content_id = scenarios.id)
       OR
       -- Assigned to the topic containing this scenario
-      (content_type = 'topic' AND content_id = scenarios.topic_id::text)
+      (content_type = 'topic' AND content_id = scenarios.topic_id)
       OR
       -- Assigned to the category containing this scenario's topic
       (content_type = 'category' AND content_id = (
-        SELECT category_id::text FROM topics WHERE id = scenarios.topic_id
+        SELECT category_id FROM topics WHERE id = scenarios.topic_id
       ))
     )
     AND (
