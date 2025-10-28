@@ -166,10 +166,10 @@ USING (
   EXISTS (
     SELECT 1 FROM content_assignments
     WHERE (
-      (content_type = 'scenario' AND content_id = scenarios.id)
-      OR (content_type = 'topic' AND content_id = scenarios.topic_id)
+      (content_type = 'scenario' AND content_id = scenarios.id::text)
+      OR (content_type = 'topic' AND content_id = scenarios.topic_id::text)
       OR (content_type = 'category' AND content_id = (
-        SELECT category_id FROM topics WHERE id = scenarios.topic_id
+        SELECT category_id::text FROM topics WHERE id = scenarios.topic_id
       ))
     )
     AND (
@@ -341,10 +341,10 @@ USING (
   EXISTS (
     SELECT 1 FROM scenarios
     JOIN content_assignments ON (
-      (content_assignments.content_type = 'scenario' AND content_assignments.content_id = scenarios.id)
-      OR (content_assignments.content_type = 'topic' AND content_assignments.content_id = scenarios.topic_id)
+      (content_assignments.content_type = 'scenario' AND content_assignments.content_id = scenarios.id::text)
+      OR (content_assignments.content_type = 'topic' AND content_assignments.content_id = scenarios.topic_id::text)
       OR (content_assignments.content_type = 'category' AND content_assignments.content_id = (
-        SELECT category_id FROM topics WHERE id = scenarios.topic_id
+        SELECT category_id::text FROM topics WHERE id = scenarios.topic_id
       ))
     )
     WHERE scenarios.id = rubrics.scenario_id

@@ -41,14 +41,14 @@ USING (
     SELECT 1 FROM content_assignments
     WHERE (
       -- Assigned to this specific scenario
-      (content_type = 'scenario' AND content_id = scenarios.id)
+      (content_type = 'scenario' AND content_id = scenarios.id::text)
       OR
       -- Assigned to the topic containing this scenario
-      (content_type = 'topic' AND content_id = scenarios.topic_id)
+      (content_type = 'topic' AND content_id = scenarios.topic_id::text)
       OR
       -- Assigned to the category containing this scenario's topic
       (content_type = 'category' AND content_id = (
-        SELECT category_id FROM topics WHERE id = scenarios.topic_id
+        SELECT category_id::text FROM topics WHERE id = scenarios.topic_id
       ))
     )
     AND (
