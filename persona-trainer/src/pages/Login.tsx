@@ -84,7 +84,7 @@ const Login = () => {
         }}
       >
         <Typography component="h1" variant="h4" color="primary" fontWeight="bold" gutterBottom>
-          Persona Trainer
+          Scenario Sim Trainer
         </Typography>
 
         <Paper
@@ -184,7 +184,7 @@ const Login = () => {
         </Paper>
 
         <Typography variant="body2" color="text.secondary" align="center" sx={{ mt: 5 }}>
-          &copy; {new Date().getFullYear()} Persona Trainer. All rights reserved.
+          &copy; {new Date().getFullYear()} Scenario Sim Trainer. All rights reserved.
         </Typography>
       </Box>
     </Container>
