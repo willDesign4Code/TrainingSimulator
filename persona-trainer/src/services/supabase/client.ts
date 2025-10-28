@@ -69,6 +69,7 @@ export type Persona = {
   image_url?: string;
   is_ai_generated_image: boolean;
   created_by: string;
+  is_public: boolean;
   created_at: string;
   updated_at: string;
 };

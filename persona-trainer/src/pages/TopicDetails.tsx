@@ -32,6 +32,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import ScenarioCard from '../components/scenarios/ScenarioCard';
 import RubricsManager from '../components/rubrics/RubricsManager';
 import { supabase } from '../services/supabase/client';
+import { useAuth } from '../contexts/AuthContext';
 
 const mockTopics = [
   {
@@ -146,6 +147,7 @@ const mockScenarios = [
 const TopicDetails = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [topic, setTopic] = useState<any | null>(null);
   const [scenarios, setScenarios] = useState<any[]>([]);
   const [personas, setPersonas] = useState<any[]>([]);
@@ -213,10 +215,11 @@ const TopicDetails = () => {
 
         if (scenariosError) throw scenariosError;
 
-        // Fetch all personas for the dropdown
+        // Fetch personas that are either public OR created by the current user
         const { data: personasData, error: personasError } = await supabase
           .from('personas')
           .select('*')
+          .or(`is_public.eq.true,created_by.eq.${user?.id}`)
           .order('name', { ascending: true });
 
         if (personasError) throw personasError;

@@ -17,13 +17,16 @@ import {
   MenuItem,
   SelectChangeEvent,
   Alert,
-  CircularProgress
+  CircularProgress,
+  FormControlLabel,
+  Switch
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
 import PersonaCard from '../components/personas/PersonaCard';
 import { supabase } from '../services/supabase/client';
 import type { Persona } from '../services/supabase/client';
+import { useAuth } from '../contexts/AuthContext';
 
 // OpenAI TTS Voice Options
 const VOICE_OPTIONS = [
@@ -37,6 +40,7 @@ const VOICE_OPTIONS = [
 ] as const;
 
 const Personas = () => {
+  const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [openDialog, setOpenDialog] = useState(false);
   const [ageFilter, setAgeFilter] = useState<string>('');
@@ -54,7 +58,8 @@ const Personas = () => {
     voice: 'alloy',
     interests: '',
     goals: '',
-    image_url: ''
+    image_url: '',
+    is_public: true
   });
 
   // Fetch personas from Supabase
@@ -65,9 +70,17 @@ const Personas = () => {
   const fetchPersonas = async () => {
     try {
       setLoading(true);
+      if (!user) {
+        setError('You must be logged in to view personas.');
+        setLoading(false);
+        return;
+      }
+
+      // Fetch personas that are either public OR created by the current user
       const { data, error } = await supabase
         .from('personas')
         .select('*')
+        .or(`is_public.eq.true,created_by.eq.${user.id}`)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -110,7 +123,8 @@ const Personas = () => {
       voice: 'alloy',
       interests: '',
       goals: '',
-      image_url: ''
+      image_url: '',
+      is_public: true
     });
     setOpenDialog(true);
   };
@@ -142,7 +156,8 @@ const Personas = () => {
         interests,
         goals,
         image_url: formData.image_url || null,
-        is_ai_generated_image: false
+        is_ai_generated_image: false,
+        is_public: formData.is_public
       };
 
       if (editingPersonaId) {
@@ -154,10 +169,10 @@ const Personas = () => {
 
         if (error) throw error;
       } else {
-        // Create new persona
+        // Create new persona with created_by field
         const { error } = await supabase
           .from('personas')
-          .insert([personaData])
+          .insert([{ ...personaData, created_by: user?.id }])
           .select()
           .single();
 
@@ -194,7 +209,8 @@ const Personas = () => {
       voice: personaToEdit.voice || 'alloy',
       interests: interestsString,
       goals: goalsString,
-      image_url: personaToEdit.image_url || ''
+      image_url: personaToEdit.image_url || '',
+      is_public: personaToEdit.is_public
     });
     setOpenDialog(true);
   };
@@ -313,6 +329,7 @@ const Personas = () => {
                 age={persona.age}
                 pronouns={persona.pronoun}
                 imageUrl={persona.image_url || ''}
+                isPublic={persona.is_public}
                 onEdit={handleEditPersona}
                 onDelete={handleDeletePersona}
               />
@@ -435,6 +452,26 @@ const Personas = () => {
               placeholder="https://example.com/image.jpg"
               value={formData.image_url}
               onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
+            />
+
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={formData.is_public}
+                  onChange={(e) => setFormData({ ...formData, is_public: e.target.checked })}
+                  color="primary"
+                />
+              }
+              label={
+                <Box>
+                  <Typography variant="body1">Make this persona public</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {formData.is_public
+                      ? 'Everyone can view and use this persona'
+                      : 'Only you can view and use this persona'}
+                  </Typography>
+                </Box>
+              }
             />
           </Box>
         </DialogContent>

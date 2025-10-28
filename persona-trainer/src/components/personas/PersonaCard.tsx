@@ -6,8 +6,11 @@ import {
   Typography,
   Box,
   Button,
-  CardActions
+  CardActions,
+  Chip
 } from '@mui/material';
+import PublicIcon from '@mui/icons-material/Public';
+import LockIcon from '@mui/icons-material/Lock';
 
 export interface PersonaProps {
   id: string;
@@ -15,6 +18,7 @@ export interface PersonaProps {
   age: number;
   pronouns: string;
   imageUrl: string;
+  isPublic?: boolean;
   onEdit?: (id: string) => void;
   onDelete?: (id: string) => void;
 }
@@ -25,6 +29,7 @@ const PersonaCard: React.FC<PersonaProps> = ({
   age,
   pronouns,
   imageUrl,
+  isPublic = true,
   onEdit,
   onDelete
 }) => {
@@ -59,6 +64,15 @@ const PersonaCard: React.FC<PersonaProps> = ({
             sx={{ objectFit: 'cover' }}
           />
         )}
+        <Box sx={{ position: 'absolute', top: 8, right: 8 }}>
+          <Chip
+            icon={isPublic ? <PublicIcon /> : <LockIcon />}
+            label={isPublic ? 'Public' : 'Private'}
+            color={isPublic ? 'success' : 'default'}
+            size="small"
+            sx={{ bgcolor: 'rgba(255, 255, 255, 0.9)' }}
+          />
+        </Box>
       </Box>
       <CardContent sx={{ flexGrow: 1, bgcolor: 'background.paper' }}>
         <Typography gutterBottom variant="h5" component="div">
