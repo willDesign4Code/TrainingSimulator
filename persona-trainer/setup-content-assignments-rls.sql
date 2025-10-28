@@ -27,7 +27,7 @@ USING (
   auth.uid()::text = ANY(assigned_users)
   OR
   -- User created the assignment
-  assigned_by = auth.uid()
+  assigned_by = auth.uid()::text
 );
 
 -- Policy 2: Admins and managers can view all assignments
@@ -49,7 +49,7 @@ ON content_assignments
 FOR INSERT
 TO authenticated
 WITH CHECK (
-  assigned_by = auth.uid()
+  assigned_by = auth.uid()::text
   AND EXISTS (
     SELECT 1 FROM users
     WHERE id = auth.uid()
@@ -68,7 +68,7 @@ USING (
     WHERE id = auth.uid()
     AND (
       role = 'admin'
-      OR (role = 'manager' AND auth.uid() = content_assignments.assigned_by)
+      OR (role = 'manager' AND auth.uid()::text = content_assignments.assigned_by)
     )
   )
 )
@@ -78,7 +78,7 @@ WITH CHECK (
     WHERE id = auth.uid()
     AND (
       role = 'admin'
-      OR (role = 'manager' AND auth.uid() = content_assignments.assigned_by)
+      OR (role = 'manager' AND auth.uid()::text = content_assignments.assigned_by)
     )
   )
 );
@@ -109,7 +109,7 @@ USING (
     WHERE id = auth.uid()
     AND (
       role = 'admin'
-      OR (role = 'manager' AND auth.uid() = content_assignments.assigned_by)
+      OR (role = 'manager' AND auth.uid()::text = content_assignments.assigned_by)
     )
   )
 );

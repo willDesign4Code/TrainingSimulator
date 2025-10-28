@@ -226,7 +226,7 @@ ON content_assignments FOR SELECT TO authenticated
 USING (
   (assigned_to_type = 'user' AND assigned_to_id = auth.uid()::text)
   OR auth.uid()::text = ANY(assigned_users)
-  OR assigned_by = auth.uid()
+  OR assigned_by = auth.uid()::text
 );
 
 CREATE POLICY "Admins and managers can view all assignments"
@@ -241,7 +241,7 @@ USING (
 CREATE POLICY "Admins and managers can create assignments"
 ON content_assignments FOR INSERT TO authenticated
 WITH CHECK (
-  assigned_by = auth.uid()
+  assigned_by = auth.uid()::text
   AND EXISTS (
     SELECT 1 FROM users
     WHERE id = auth.uid() AND role IN ('admin', 'manager')
@@ -256,7 +256,7 @@ USING (
     WHERE id = auth.uid()
     AND (
       role = 'admin'
-      OR (role = 'manager' AND auth.uid() = content_assignments.assigned_by)
+      OR (role = 'manager' AND auth.uid()::text = content_assignments.assigned_by)
     )
   )
 )
@@ -266,7 +266,7 @@ WITH CHECK (
     WHERE id = auth.uid()
     AND (
       role = 'admin'
-      OR (role = 'manager' AND auth.uid() = content_assignments.assigned_by)
+      OR (role = 'manager' AND auth.uid()::text = content_assignments.assigned_by)
     )
   )
 );
@@ -290,7 +290,7 @@ USING (
     WHERE id = auth.uid()
     AND (
       role = 'admin'
-      OR (role = 'manager' AND auth.uid() = content_assignments.assigned_by)
+      OR (role = 'manager' AND auth.uid()::text = content_assignments.assigned_by)
     )
   )
 );
