@@ -45,7 +45,19 @@ WHERE created_by IS NULL OR is_public IS NULL;
 -- Option 2: Ensure you have admin role
 -- ============================================================================
 
+-- First, check if auth.uid() is working
+DO $$
+BEGIN
+  IF auth.uid() IS NULL THEN
+    RAISE NOTICE 'WARNING: auth.uid() is NULL. You need to run Option 2A instead of Option 2.';
+  ELSE
+    RAISE NOTICE 'Your user ID is: %', auth.uid();
+  END IF;
+END $$;
+
+-- Option 2A: If auth.uid() works, use this
 -- Make sure your user exists and is admin
+/*
 INSERT INTO users (id, email, name, role, created_at)
 VALUES (
   auth.uid(),
@@ -56,6 +68,28 @@ VALUES (
 )
 ON CONFLICT (id) DO UPDATE
 SET role = 'admin';
+*/
+
+-- Option 2B: If auth.uid() returns NULL, use this instead
+-- UNCOMMENT and replace 'YOUR-USER-ID-HERE' with your actual user ID
+/*
+-- First, find your user ID by looking at existing data:
+SELECT DISTINCT created_by FROM categories WHERE created_by IS NOT NULL LIMIT 1;
+-- Or check auth.users table:
+SELECT id, email FROM auth.users;
+
+-- Then update/insert with your actual user ID:
+INSERT INTO users (id, email, name, role, created_at)
+VALUES (
+  'YOUR-USER-ID-HERE',  -- Replace with your actual UUID
+  'your-email@example.com',
+  'Your Name',
+  'admin',
+  NOW()
+)
+ON CONFLICT (id) DO UPDATE
+SET role = 'admin';
+*/
 
 -- ============================================================================
 -- Verification
