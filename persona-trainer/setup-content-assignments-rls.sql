@@ -21,13 +21,13 @@ FOR SELECT
 TO authenticated
 USING (
   -- User is individually assigned
-  (assigned_to_type = 'user' AND assigned_to_id = auth.uid()::text)
+  (assigned_to_type = 'user' AND assigned_to_id::uuid = auth.uid())
   OR
   -- User is in the assigned_users array
-  auth.uid()::text = ANY(assigned_users)
+  auth.uid() = ANY(assigned_users::uuid[])
   OR
   -- User created the assignment
-  assigned_by = auth.uid()::text
+  assigned_by::uuid = auth.uid()
 );
 
 -- Policy 2: Admins and managers can view all assignments
@@ -49,7 +49,7 @@ ON content_assignments
 FOR INSERT
 TO authenticated
 WITH CHECK (
-  assigned_by = auth.uid()::text
+  assigned_by::uuid = auth.uid()
   AND EXISTS (
     SELECT 1 FROM users
     WHERE id = auth.uid()
@@ -68,7 +68,7 @@ USING (
     WHERE id = auth.uid()
     AND (
       role = 'admin'
-      OR (role = 'manager' AND auth.uid()::text = content_assignments.assigned_by)
+      OR (role = 'manager' AND auth.uid() = content_assignments.assigned_by::uuid)
     )
   )
 )
@@ -78,7 +78,7 @@ WITH CHECK (
     WHERE id = auth.uid()
     AND (
       role = 'admin'
-      OR (role = 'manager' AND auth.uid()::text = content_assignments.assigned_by)
+      OR (role = 'manager' AND auth.uid() = content_assignments.assigned_by::uuid)
     )
   )
 );
@@ -89,13 +89,13 @@ ON content_assignments
 FOR UPDATE
 TO authenticated
 USING (
-  (assigned_to_type = 'user' AND assigned_to_id = auth.uid()::text)
-  OR auth.uid()::text = ANY(assigned_users)
+  (assigned_to_type = 'user' AND assigned_to_id::uuid = auth.uid())
+  OR auth.uid() = ANY(assigned_users::uuid[])
 )
 WITH CHECK (
   -- Only allow updating completed_at field
-  (assigned_to_type = 'user' AND assigned_to_id = auth.uid()::text)
-  OR auth.uid()::text = ANY(assigned_users)
+  (assigned_to_type = 'user' AND assigned_to_id::uuid = auth.uid())
+  OR auth.uid() = ANY(assigned_users::uuid[])
 );
 
 -- Policy 6: Admins and managers can delete assignments they created or all if admin
@@ -109,7 +109,7 @@ USING (
     WHERE id = auth.uid()
     AND (
       role = 'admin'
-      OR (role = 'manager' AND auth.uid()::text = content_assignments.assigned_by)
+      OR (role = 'manager' AND auth.uid() = content_assignments.assigned_by::uuid)
     )
   )
 );

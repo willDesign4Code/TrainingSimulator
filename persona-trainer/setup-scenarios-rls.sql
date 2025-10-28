@@ -54,10 +54,10 @@ USING (
     )
     AND (
       -- User is individually assigned
-      (assigned_to_type = 'user' AND assigned_to_id = auth.uid()::text)
+      (assigned_to_type = 'user' AND assigned_to_id::uuid = auth.uid())
       OR
       -- User is in the assigned_users array
-      auth.uid()::text = ANY(assigned_users)
+      auth.uid() = ANY(assigned_users::uuid[])
     )
   )
 );

@@ -173,8 +173,8 @@ USING (
       ))
     )
     AND (
-      (assigned_to_type = 'user' AND assigned_to_id = auth.uid()::text)
-      OR auth.uid()::text = ANY(assigned_users)
+      (assigned_to_type = 'user' AND assigned_to_id::uuid = auth.uid())
+      OR auth.uid() = ANY(assigned_users::uuid[])
     )
   )
 );
@@ -224,9 +224,9 @@ DROP POLICY IF EXISTS "Admins and managers can delete assignments" ON content_as
 CREATE POLICY "Users can view assignments assigned to them"
 ON content_assignments FOR SELECT TO authenticated
 USING (
-  (assigned_to_type = 'user' AND assigned_to_id = auth.uid()::text)
-  OR auth.uid()::text = ANY(assigned_users)
-  OR assigned_by = auth.uid()::text
+  (assigned_to_type = 'user' AND assigned_to_id::uuid = auth.uid())
+  OR auth.uid() = ANY(assigned_users::uuid[])
+  OR assigned_by::uuid = auth.uid()
 );
 
 CREATE POLICY "Admins and managers can view all assignments"
@@ -241,7 +241,7 @@ USING (
 CREATE POLICY "Admins and managers can create assignments"
 ON content_assignments FOR INSERT TO authenticated
 WITH CHECK (
-  assigned_by = auth.uid()::text
+  assigned_by::uuid = auth.uid()
   AND EXISTS (
     SELECT 1 FROM users
     WHERE id = auth.uid() AND role IN ('admin', 'manager')
@@ -256,7 +256,7 @@ USING (
     WHERE id = auth.uid()
     AND (
       role = 'admin'
-      OR (role = 'manager' AND auth.uid()::text = content_assignments.assigned_by)
+      OR (role = 'manager' AND auth.uid() = content_assignments.assigned_by::uuid)
     )
   )
 )
@@ -266,7 +266,7 @@ WITH CHECK (
     WHERE id = auth.uid()
     AND (
       role = 'admin'
-      OR (role = 'manager' AND auth.uid()::text = content_assignments.assigned_by)
+      OR (role = 'manager' AND auth.uid() = content_assignments.assigned_by::uuid)
     )
   )
 );
@@ -274,12 +274,12 @@ WITH CHECK (
 CREATE POLICY "Users can update their assignment completion"
 ON content_assignments FOR UPDATE TO authenticated
 USING (
-  (assigned_to_type = 'user' AND assigned_to_id = auth.uid()::text)
-  OR auth.uid()::text = ANY(assigned_users)
+  (assigned_to_type = 'user' AND assigned_to_id::uuid = auth.uid())
+  OR auth.uid() = ANY(assigned_users::uuid[])
 )
 WITH CHECK (
-  (assigned_to_type = 'user' AND assigned_to_id = auth.uid()::text)
-  OR auth.uid()::text = ANY(assigned_users)
+  (assigned_to_type = 'user' AND assigned_to_id::uuid = auth.uid())
+  OR auth.uid() = ANY(assigned_users::uuid[])
 );
 
 CREATE POLICY "Admins and managers can delete assignments"
@@ -290,7 +290,7 @@ USING (
     WHERE id = auth.uid()
     AND (
       role = 'admin'
-      OR (role = 'manager' AND auth.uid()::text = content_assignments.assigned_by)
+      OR (role = 'manager' AND auth.uid() = content_assignments.assigned_by::uuid)
     )
   )
 );
@@ -349,7 +349,7 @@ USING (
     )
     WHERE scenarios.id = rubrics.scenario_id
     AND (
-      (content_assignments.assigned_to_type = 'user' AND content_assignments.assigned_to_id = auth.uid()::text)
+      (content_assignments.assigned_to_type = 'user' AND content_assignments.assigned_to_id::uuid = auth.uid())
       OR auth.uid()::text = ANY(content_assignments.assigned_users)
     )
   )

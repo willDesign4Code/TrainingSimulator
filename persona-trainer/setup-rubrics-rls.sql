@@ -53,8 +53,8 @@ USING (
     )
     WHERE scenarios.id = rubrics.scenario_id
     AND (
-      (content_assignments.assigned_to_type = 'user' AND content_assignments.assigned_to_id = auth.uid()::text)
-      OR auth.uid()::text = ANY(content_assignments.assigned_users)
+      (content_assignments.assigned_to_type = 'user' AND content_assignments.assigned_to_id::uuid = auth.uid())
+      OR auth.uid() = ANY(content_assignments.assigned_users::uuid[])
     )
   )
 );
