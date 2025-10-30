@@ -60,7 +60,7 @@ const Dashboard = () => {
 
   return (
     <Box sx={{ width: '100%' }}>
-      <Typography variant="h4" gutterBottom sx={{ mb: 3 }}>
+      <Typography variant="h3" gutterBottom sx={{ mb: 3 }}>
         Dashboard
       </Typography>
 
@@ -72,9 +72,22 @@ const Dashboard = () => {
 
       {/* Tab Navigation */}
       <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
-        <Tabs value={activeTab} onChange={handleTabChange} aria-label="dashboard tabs">
-          <Tab label="My Assigned Categories" id="dashboard-tab-0" aria-controls="dashboard-tabpanel-0" />
-          <Tab label="My Training Scenarios" id="dashboard-tab-1" aria-controls="dashboard-tabpanel-1" />
+        <Tabs
+          value={activeTab}
+          onChange={handleTabChange}
+          aria-label="dashboard tabs"
+          sx={{ '& .MuiTab-root': { textTransform: 'none' } }}
+        >
+          <Tab
+            label={<Typography variant="h6">My Assigned Categories</Typography>}
+            id="dashboard-tab-0"
+            aria-controls="dashboard-tabpanel-0"
+          />
+          <Tab
+            label={<Typography variant="h6">My Training Scenarios</Typography>}
+            id="dashboard-tab-1"
+            aria-controls="dashboard-tabpanel-1"
+          />
         </Tabs>
       </Box>
 

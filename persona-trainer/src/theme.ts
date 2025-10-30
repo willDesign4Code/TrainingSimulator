@@ -3,47 +3,86 @@ import { createTheme } from '@mui/material/styles';
 export const theme = createTheme({
   palette: {
     primary: {
-      main: '#3f51b5', // Customizable primary color
-      light: '#757de8',
-      dark: '#002984',
-      contrastText: '#fff',
+      main: '#1976d2', // Blue - for primary buttons, chips, links
+      light: '#42a5f5',
+      dark: '#1565c0',
+      contrastText: '#ffffff',
     },
     secondary: {
-      main: '#f50057', // Customizable secondary color
-      light: '#ff5983',
-      dark: '#bb002f',
-      contrastText: '#fff',
+      main: '#9c27b0', // Purple - for secondary chips
+      light: '#ba68c8',
+      dark: '#7b1fa2',
+      contrastText: '#ffffff',
     },
     background: {
-      default: '#f5f5f5',
+      default: '#eeeeee', // Light gray background
       paper: '#ffffff',
     },
+    // Brand color for header/accent elements
+    // Access via sx={{ bgcolor: '#ff5b33' }}
   },
   typography: {
-    fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
+    fontFamily: '"Nunito", "Roboto", "Helvetica", "Arial", sans-serif',
     h1: {
-      fontSize: '2.5rem',
-      fontWeight: 500,
+      fontFamily: '"Nunito", sans-serif',
+      fontSize: '3rem', // 48px
+      fontWeight: 400,
+      lineHeight: 1.167,
     },
     h2: {
-      fontSize: '2rem',
-      fontWeight: 500,
+      fontFamily: '"Nunito", sans-serif',
+      fontSize: '2.5rem',
+      fontWeight: 400,
+      lineHeight: 1.2,
     },
     h3: {
-      fontSize: '1.75rem',
-      fontWeight: 500,
+      fontFamily: '"Nunito", sans-serif',
+      fontSize: '3rem', // 48px (Dashboard title)
+      fontWeight: 400,
+      lineHeight: 1.167,
     },
     h4: {
-      fontSize: '1.5rem',
-      fontWeight: 500,
+      fontFamily: '"Nunito", sans-serif',
+      fontSize: '1.5rem', // 24px
+      fontWeight: 400,
+      lineHeight: 1.334,
     },
     h5: {
-      fontSize: '1.25rem',
-      fontWeight: 500,
+      fontFamily: '"Nunito", sans-serif',
+      fontSize: '1.5rem', // 24px (Section titles)
+      fontWeight: 400,
+      lineHeight: 1.334,
     },
     h6: {
-      fontSize: '1rem',
+      fontFamily: '"Nunito", sans-serif',
+      fontSize: '1.25rem', // 20px (Card titles, navigation)
       fontWeight: 500,
+      lineHeight: 1.6,
+    },
+    body1: {
+      fontFamily: '"Nunito", sans-serif',
+      fontSize: '1rem', // 16px
+      fontWeight: 400,
+      lineHeight: 1.5,
+    },
+    body2: {
+      fontFamily: '"Nunito", sans-serif',
+      fontSize: '0.875rem', // 14px
+      fontWeight: 400,
+      lineHeight: 1.43,
+    },
+    caption: {
+      fontFamily: '"Afacad", sans-serif',
+      fontSize: '0.75rem', // 12px
+      fontWeight: 400,
+      lineHeight: 1.66,
+    },
+    button: {
+      fontFamily: '"Roboto", sans-serif',
+      fontSize: '0.8125rem', // 13px
+      fontWeight: 500,
+      lineHeight: 1.75,
+      textTransform: 'uppercase',
     },
   },
   shape: {
@@ -53,14 +92,37 @@ export const theme = createTheme({
     MuiButton: {
       styleOverrides: {
         root: {
-          textTransform: 'none',
+          textTransform: 'uppercase',
+          boxShadow: '0px 1px 5px 0px rgba(0,0,0,0.12), 0px 2px 2px 0px rgba(0,0,0,0.14), 0px 3px 1px -2px rgba(0,0,0,0.2)',
+        },
+        contained: {
+          boxShadow: '0px 1px 5px 0px rgba(0,0,0,0.12), 0px 2px 2px 0px rgba(0,0,0,0.14), 0px 3px 1px -2px rgba(0,0,0,0.2)',
         },
       },
     },
     MuiCard: {
       styleOverrides: {
         root: {
-          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+          boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+          padding: '16px',
+        },
+      },
+    },
+    MuiLinearProgress: {
+      styleOverrides: {
+        root: {
+          height: 4,
+          borderRadius: 4,
+        },
+      },
+    },
+    MuiChip: {
+      styleOverrides: {
+        root: {
+          fontFamily: '"Roboto", sans-serif',
+          fontSize: '0.8125rem', // 13px
+          fontWeight: 400,
+          lineHeight: 1.43,
         },
       },
     },
