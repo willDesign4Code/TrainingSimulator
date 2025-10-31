@@ -47,9 +47,9 @@ export const theme = createTheme({
     },
     h4: {
       fontFamily: '"Nunito", sans-serif',
-      fontSize: '1.5rem', // 24px
+      fontSize: '2.125rem', // 34px (Page headers)
       fontWeight: 400,
-      lineHeight: 1.334,
+      lineHeight: 1.235,
     },
     h5: {
       fontFamily: '"Nunito", sans-serif',

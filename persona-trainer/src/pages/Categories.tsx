@@ -348,7 +348,7 @@ const Categories = () => {
   };
   
   return (
-    <Box sx={{ px: 3 }}>
+    <Box sx={{ width: '100%' }}>
       {error && (
         <Alert severity="error" onClose={() => setError(null)} sx={{ mb: 3 }}>
           {error}
@@ -452,7 +452,7 @@ const Categories = () => {
                   />
                 )}
                 <CardContent sx={{ flexGrow: 1 }}>
-                  <Typography gutterBottom variant="h5" component="div">
+                  <Typography gutterBottom variant="h6" component="div">
                     {category.name}
                   </Typography>
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
