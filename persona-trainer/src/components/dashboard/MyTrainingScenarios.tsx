@@ -38,8 +38,13 @@ interface ScenarioData {
   assigned_date: string;
 }
 
-type SortOption = 'date_added' | 'date_created' | 'date_updated';
-type SortDirection = 'asc' | 'desc';
+type SortOption =
+  | 'date_added-desc'
+  | 'date_added-asc'
+  | 'date_created-desc'
+  | 'date_created-asc'
+  | 'date_updated-desc'
+  | 'date_updated-asc';
 
 interface MyTrainingScenariosProps {
   onStartTraining: (scenarioId: string, scenarioTitle: string) => void;
@@ -64,12 +69,16 @@ const MyTrainingScenarios = ({ onStartTraining }: MyTrainingScenariosProps) => {
   const [searchQuery, setSearchQuery] = useState(() =>
     localStorage.getItem('scenarios_search') || ''
   );
-  const [sortBy, setSortBy] = useState<SortOption>(() =>
-    (localStorage.getItem('scenarios_sort') as SortOption) || 'date_added'
-  );
-  const [sortDirection, setSortDirection] = useState<SortDirection>(() =>
-    (localStorage.getItem('scenarios_sort_direction') as SortDirection) || 'desc'
-  );
+  const [sortBy, setSortBy] = useState<SortOption>(() => {
+    const saved = localStorage.getItem('scenarios_sort');
+    const savedDirection = localStorage.getItem('scenarios_sort_direction');
+
+    // Migrate old format to new combined format
+    if (saved && savedDirection) {
+      return `${saved}-${savedDirection}` as SortOption;
+    }
+    return 'date_added-desc';
+  });
   const [categoryFilter, setCategoryFilter] = useState(() =>
     localStorage.getItem('scenarios_category_filter') || 'all'
   );
@@ -89,7 +98,7 @@ const MyTrainingScenarios = ({ onStartTraining }: MyTrainingScenariosProps) => {
   // Apply filters and sorting
   useEffect(() => {
     applyFiltersAndSort();
-  }, [scenarios, searchQuery, sortBy, sortDirection, categoryFilter, hideCompleted]);
+  }, [scenarios, searchQuery, sortBy, categoryFilter, hideCompleted]);
 
   const fetchScenarios = async () => {
     try {
@@ -215,11 +224,13 @@ const MyTrainingScenarios = ({ onStartTraining }: MyTrainingScenariosProps) => {
       filtered = filtered.filter(scenario => scenario.status !== 'Completed');
     }
 
-    // Apply sorting
+    // Apply sorting - parse combined sort option
+    const [field, direction] = sortBy.split('-') as [string, 'asc' | 'desc'];
+
     filtered.sort((a, b) => {
       let comparison = 0;
 
-      switch (sortBy) {
+      switch (field) {
         case 'date_added':
           comparison = new Date(a.assigned_date).getTime() - new Date(b.assigned_date).getTime();
           break;
@@ -234,7 +245,7 @@ const MyTrainingScenarios = ({ onStartTraining }: MyTrainingScenariosProps) => {
       }
 
       // Apply sort direction
-      return sortDirection === 'asc' ? comparison : -comparison;
+      return direction === 'asc' ? comparison : -comparison;
     });
 
     setFilteredScenarios(filtered);
@@ -250,11 +261,8 @@ const MyTrainingScenarios = ({ onStartTraining }: MyTrainingScenariosProps) => {
   const handleSortChange = (value: SortOption) => {
     setSortBy(value);
     localStorage.setItem('scenarios_sort', value);
-  };
-
-  const handleSortDirectionChange = (value: SortDirection) => {
-    setSortDirection(value);
-    localStorage.setItem('scenarios_sort_direction', value);
+    // Remove old separate keys
+    localStorage.removeItem('scenarios_sort_direction');
   };
 
   const handleCategoryFilterChange = (value: string) => {
@@ -312,28 +320,21 @@ const MyTrainingScenarios = ({ onStartTraining }: MyTrainingScenariosProps) => {
           }}
         />
 
-        <FormControl size="small" sx={{ minWidth: 180 }}>
-          <InputLabel>Sort By</InputLabel>
+        <FormControl size="small" sx={{ minWidth: 220 }}>
+          <InputLabel id="sort-by-label">Sort By</InputLabel>
           <Select
+            labelId="sort-by-label"
+            id="sort-by-select"
             value={sortBy}
             label="Sort By"
             onChange={(e) => handleSortChange(e.target.value as SortOption)}
           >
-            <MenuItem value="date_added">Date Added</MenuItem>
-            <MenuItem value="date_created">Date Created</MenuItem>
-            <MenuItem value="date_updated">Date Updated</MenuItem>
-          </Select>
-        </FormControl>
-
-        <FormControl size="small" sx={{ minWidth: 140 }}>
-          <InputLabel>Direction</InputLabel>
-          <Select
-            value={sortDirection}
-            label="Direction"
-            onChange={(e) => handleSortDirectionChange(e.target.value as SortDirection)}
-          >
-            <MenuItem value="desc">Newest First</MenuItem>
-            <MenuItem value="asc">Oldest First</MenuItem>
+            <MenuItem value="date_added-desc">Date Added (Newest)</MenuItem>
+            <MenuItem value="date_added-asc">Date Added (Oldest)</MenuItem>
+            <MenuItem value="date_created-desc">Date Created (Newest)</MenuItem>
+            <MenuItem value="date_created-asc">Date Created (Oldest)</MenuItem>
+            <MenuItem value="date_updated-desc">Date Updated (Newest)</MenuItem>
+            <MenuItem value="date_updated-asc">Date Updated (Oldest)</MenuItem>
           </Select>
         </FormControl>
 
@@ -378,8 +379,8 @@ const MyTrainingScenarios = ({ onStartTraining }: MyTrainingScenariosProps) => {
         </Box>
       ) : (
         <>
-          <TableContainer component={Paper} elevation={2}>
-            <Table>
+          <TableContainer component={Paper} elevation={2} sx={{ width: '100%' }}>
+            <Table sx={{ minWidth: 650 }}>
               <TableHead>
                 <TableRow>
                   <TableCell><strong>Scenario Name</strong></TableCell>
