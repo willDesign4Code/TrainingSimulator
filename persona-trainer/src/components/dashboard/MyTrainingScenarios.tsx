@@ -380,7 +380,7 @@ const MyTrainingScenarios = ({ onStartTraining }: MyTrainingScenariosProps) => {
       ) : (
         <>
           <TableContainer component={Paper} elevation={2} sx={{ width: '100%' }}>
-            <Table sx={{ minWidth: 650 }}>
+            <Table sx={{ width: '100%', minWidth: 650 }}>
               <TableHead>
                 <TableRow>
                   <TableCell><strong>Scenario Name</strong></TableCell>
