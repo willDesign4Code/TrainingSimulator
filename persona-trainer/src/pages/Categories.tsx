@@ -20,7 +20,10 @@ import {
   FormControlLabel,
   Switch,
   Alert,
-  CircularProgress
+  CircularProgress,
+  Select,
+  MenuItem,
+  InputLabel
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import AddIcon from '@mui/icons-material/Add';
@@ -30,13 +33,16 @@ import { supabase } from '../services/supabase/client';
 import type { Category } from '../services/supabase/client';
 import { useAuth } from '../contexts/AuthContext';
 
+type SortOption = 'date-newest' | 'date-oldest' | 'name-asc' | 'name-desc';
+
 const Categories = () => {
   const navigate = useNavigate();
   const { user, userProfile } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [openDialog, setOpenDialog] = useState(false);
   const [openEditDialog, setOpenEditDialog] = useState(false);
-  const [showPublicOnly, setShowPublicOnly] = useState(false);
+  const [showPublicCategories, setShowPublicCategories] = useState(true);
+  const [sortBy, setSortBy] = useState<SortOption>('date-newest');
   const [categories, setCategories] = useState<Category[]>([]);
   const [categoryToEdit, setCategoryToEdit] = useState<Category | null>(null);
   const [loading, setLoading] = useState(true);
@@ -87,16 +93,21 @@ const Categories = () => {
       if (error) throw error;
       setCategories(data || []);
 
-      // Fetch topic counts for each category
-      if (data) {
+      // Fetch topic counts for each category using aggregate query (optimized)
+      if (data && data.length > 0) {
+        const { data: topicsData } = await supabase
+          .from('topics')
+          .select('category_id')
+          .in('category_id', data.map(c => c.id));
+
+        // Count topics per category
         const counts: Record<string, number> = {};
-        for (const category of data) {
-          const { count } = await supabase
-            .from('topics')
-            .select('*', { count: 'exact', head: true })
-            .eq('category_id', category.id);
-          counts[category.id] = count || 0;
-        }
+        data.forEach(category => {
+          counts[category.id] = 0;
+        });
+        topicsData?.forEach(topic => {
+          counts[topic.category_id] = (counts[topic.category_id] || 0) + 1;
+        });
         setTopicCounts(counts);
       }
 
@@ -114,7 +125,23 @@ const Categories = () => {
       category.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       category.details.toLowerCase().includes(searchTerm.toLowerCase())
     )
-    .filter(category => !showPublicOnly || category.is_public);
+    .filter(category =>
+      showPublicCategories ? true : category.created_by === user?.id
+    )
+    .sort((a, b) => {
+      switch (sortBy) {
+        case 'date-newest':
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        case 'date-oldest':
+          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+        case 'name-asc':
+          return a.name.localeCompare(b.name);
+        case 'name-desc':
+          return b.name.localeCompare(a.name);
+        default:
+          return 0;
+      }
+    });
   
   const handleOpenDialog = () => {
     setOpenDialog(true);
@@ -341,9 +368,8 @@ const Categories = () => {
         </Button>
       </Box>
       
-      <Box sx={{ display: 'flex', mb: 3 }}>
+      <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap', alignItems: 'center' }}>
         <TextField
-          fullWidth
           placeholder="Search categories..."
           variant="outlined"
           size="small"
@@ -356,26 +382,36 @@ const Categories = () => {
               </InputAdornment>
             ),
           }}
-          sx={{ maxWidth: 500, mr: 2 }}
+          sx={{ flexGrow: 1, minWidth: 250, maxWidth: 400 }}
         />
-        <IconButton 
-          color={showPublicOnly ? "primary" : "default"} 
-          onClick={() => setShowPublicOnly(!showPublicOnly)}
-          sx={{ border: 1, borderColor: 'divider' }}
-        >
-          <FilterListIcon />
-        </IconButton>
+
+        <FormControl size="small" sx={{ minWidth: 200 }}>
+          <InputLabel id="sort-by-label">Sort By</InputLabel>
+          <Select
+            labelId="sort-by-label"
+            id="sort-by-select"
+            value={sortBy}
+            label="Sort By"
+            onChange={(e) => setSortBy(e.target.value as SortOption)}
+          >
+            <MenuItem value="date-newest">Date Added (Newest)</MenuItem>
+            <MenuItem value="date-oldest">Date Added (Oldest)</MenuItem>
+            <MenuItem value="name-asc">Name (A-Z)</MenuItem>
+            <MenuItem value="name-desc">Name (Z-A)</MenuItem>
+          </Select>
+        </FormControl>
+
+        <FormControlLabel
+          control={
+            <Switch
+              checked={showPublicCategories}
+              onChange={(e) => setShowPublicCategories(e.target.checked)}
+              color="primary"
+            />
+          }
+          label="Show Public Categories"
+        />
       </Box>
-      
-      {showPublicOnly && (
-        <Chip 
-          label="Showing public categories only" 
-          onDelete={() => setShowPublicOnly(false)} 
-          color="primary" 
-          variant="outlined"
-          sx={{ mb: 3 }}
-        />
-      )}
       
       {loading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
@@ -437,12 +473,22 @@ const Categories = () => {
                     />
                   </Box>
                 </CardContent>
-                <CardActions sx={{ pt: 0 }}>
-                  <Button size="small" onClick={() => navigate(`/categories/${category.id}`)}>
-                    View Topics
+                <CardActions sx={{ p: 2, pt: 0, gap: 1 }}>
+                  <Button
+                    variant="contained"
+                    color="warning"
+                    fullWidth
+                    onClick={() => navigate(`/categories/${category.id}`)}
+                  >
+                    VIEW TOPICS
                   </Button>
-                  <Button size="small" onClick={() => handleOpenEditDialog(category)}>
-                    Edit
+                  <Button
+                    variant="contained"
+                    color="warning"
+                    fullWidth
+                    onClick={() => handleOpenEditDialog(category)}
+                  >
+                    EDIT
                   </Button>
                 </CardActions>
               </Card>

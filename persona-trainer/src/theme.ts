@@ -14,12 +14,16 @@ export const theme = createTheme({
       dark: '#7b1fa2',
       contrastText: '#ffffff',
     },
+    warning: {
+      main: '#ffb300', // Amber - for secondary action buttons (View Topics, Edit)
+      light: '#ffc233',
+      dark: '#ff8f00',
+      contrastText: 'rgba(0, 0, 0, 0.6)',
+    },
     background: {
       default: '#eeeeee', // Light gray background
       paper: '#ffffff',
     },
-    // Brand color for header/accent elements
-    // Access via sx={{ bgcolor: '#ff5b33' }}
   },
   typography: {
     fontFamily: '"Nunito", "Roboto", "Helvetica", "Arial", sans-serif',
