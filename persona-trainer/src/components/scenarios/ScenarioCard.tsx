@@ -7,7 +7,8 @@ import {
   Box,
   Button,
   CardActions,
-  Chip
+  Chip,
+  Tooltip
 } from '@mui/material';
 
 export interface ScenarioProps {
@@ -31,6 +32,11 @@ const ScenarioCard: React.FC<ScenarioProps> = ({
   onDelete,
   onView
 }) => {
+  // Calculate if we need to show "more" based on line height
+  // Approximate: 2 lines at body2 is roughly 48-50 characters per line = 100 chars
+  const shouldShowMore = overview.length > 100;
+  const displayText = shouldShowMore ? overview.substring(0, 100) : overview;
+
   return (
     <Card
       elevation={2}
@@ -67,8 +73,41 @@ const ScenarioCard: React.FC<ScenarioProps> = ({
         <Typography gutterBottom variant="h6" component="div">
           {title}
         </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          {overview.length > 100 ? `${overview.substring(0, 100)}...` : overview}
+        <Typography
+          variant="body2"
+          color="text.secondary"
+          sx={{
+            mb: 2,
+            display: '-webkit-box',
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis'
+          }}
+        >
+          {displayText}
+          {shouldShowMore && (
+            <>
+              {'... '}
+              <Tooltip
+                title={overview}
+                arrow
+              >
+                <Typography
+                  component="span"
+                  color="primary"
+                  sx={{
+                    cursor: 'pointer',
+                    '&:hover': {
+                      textDecoration: 'underline'
+                    }
+                  }}
+                >
+                  more
+                </Typography>
+              </Tooltip>
+            </>
+          )}
         </Typography>
         <Chip
           label={`Persona: ${customerPersona}`}
@@ -77,30 +116,35 @@ const ScenarioCard: React.FC<ScenarioProps> = ({
           variant="outlined"
         />
       </CardContent>
-      <CardActions sx={{ bgcolor: 'background.paper' }}>
+      <CardActions sx={{ bgcolor: 'background.paper', p: 2, pt: 0, gap: 1 }}>
         {onView && (
           <Button
-            size="small"
+            variant="contained"
+            color="warning"
+            fullWidth
             onClick={() => onView(id)}
           >
-            Rubrics
+            RUBRICS
           </Button>
         )}
         {onEdit && (
           <Button
-            size="small"
+            variant="contained"
+            color="warning"
+            fullWidth
             onClick={() => onEdit(id)}
           >
-            Edit
+            EDIT
           </Button>
         )}
         {onDelete && (
           <Button
-            size="small"
+            variant="contained"
             color="error"
+            fullWidth
             onClick={() => onDelete(id)}
           >
-            Delete
+            DELETE
           </Button>
         )}
       </CardActions>

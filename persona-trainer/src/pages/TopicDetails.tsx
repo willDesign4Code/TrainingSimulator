@@ -1,24 +1,21 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { 
-  Box, 
-  Typography, 
-  Button, 
+import {
+  Box,
+  Typography,
+  Button,
   TextField,
   InputAdornment,
-  IconButton,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
   Fab,
-  Chip,
   FormControl,
   FormControlLabel,
   InputLabel,
   Select,
   MenuItem,
-  SelectChangeEvent,
   Switch,
   Divider,
   Alert,
@@ -28,7 +25,6 @@ import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import EditIcon from '@mui/icons-material/Edit';
-import DeleteIcon from '@mui/icons-material/Delete';
 import ScenarioCard from '../components/scenarios/ScenarioCard';
 import RubricsManager from '../components/rubrics/RubricsManager';
 import { supabase } from '../services/supabase/client';
@@ -162,7 +158,6 @@ const TopicDetails = () => {
   const [scenarioToDelete, setScenarioToDelete] = useState<string | null>(null);
   const [scenarioToView, setScenarioToView] = useState<any | null>(null);
   const [editingScenarioId, setEditingScenarioId] = useState<string | null>(null);
-  const [difficultyFilter, setDifficultyFilter] = useState<string>('');
   const [validationErrors, setValidationErrors] = useState<{[key: string]: string}>({});
   const [saving, setSaving] = useState(false);
 
@@ -242,20 +237,12 @@ const TopicDetails = () => {
     }
   }, [id]);
   
-  // Filter scenarios based on search term and difficulty filter
+  // Filter scenarios based on search term
   const filteredScenarios = scenarios.filter(scenario =>
     (scenario.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
      (scenario.details && scenario.details.toLowerCase().includes(searchTerm.toLowerCase())) ||
      (scenario.persona?.name && scenario.persona.name.toLowerCase().includes(searchTerm.toLowerCase())))
   );
-  
-  // Get unique difficulty levels for filter
-  const uniqueDifficulties = Array.from(new Set(scenarios.map(scenario => scenario.difficulty)));
-  
-  // Handle difficulty filter change
-  const handleDifficultyFilterChange = (event: SelectChangeEvent) => {
-    setDifficultyFilter(event.target.value);
-  };
   
   // Handle opening the add scenario dialog
   const handleOpenAddDialog = () => {
@@ -593,34 +580,45 @@ const TopicDetails = () => {
   
   return (
     <Box sx={{ px: 3 }}>
-      {/* Header with back button and edit button */}
-      <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-        <IconButton 
+      {/* Back button */}
+      <Box sx={{ mb: 3 }}>
+        <Button
+          startIcon={<ArrowBackIcon />}
           onClick={() => navigate(-1)}
-          sx={{ mr: 1 }}
+          sx={{
+            textTransform: 'uppercase',
+            boxShadow: 'none',
+            '&:hover': {
+              boxShadow: 'none'
+            }
+          }}
         >
-          <ArrowBackIcon />
-        </IconButton>
-        <Typography variant="h4" sx={{ flexGrow: 1 }}>
+          Back to Topics
+        </Button>
+      </Box>
+
+      {/* Topic title and edit button */}
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Typography variant="h4">
           {topic.name}
         </Typography>
-        <Button 
-          variant="outlined" 
+        <Button
+          variant="outlined"
           startIcon={<EditIcon />}
           onClick={handleOpenEditTopicDialog}
         >
           Edit Topic
         </Button>
       </Box>
-      
+
       {/* Topic details */}
-      <Box sx={{ mb: 4 }}>
+      <Box sx={{ mb: 3 }}>
         <Typography variant="body1" color="text.secondary">
           {topic.overview}
         </Typography>
       </Box>
 
-      <Divider sx={{ mb: 4 }} />
+      <Divider sx={{ mb: 3 }} />
       
       {/* Scenarios section header */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
@@ -636,7 +634,7 @@ const TopicDetails = () => {
         </Button>
       </Box>
       
-      {/* Search and filter */}
+      {/* Search */}
       <Box sx={{ display: 'flex', mb: 3, flexWrap: 'wrap', gap: 2 }}>
         <TextField
           placeholder="Search scenarios..."
@@ -653,37 +651,7 @@ const TopicDetails = () => {
           }}
           sx={{ flexGrow: 1, maxWidth: { xs: '100%', sm: 400 } }}
         />
-        
-        {uniqueDifficulties.length > 0 && (
-          <FormControl size="small" sx={{ minWidth: 200 }}>
-            <InputLabel id="difficulty-filter-label">Filter by Difficulty</InputLabel>
-            <Select
-              labelId="difficulty-filter-label"
-              id="difficulty-filter"
-              value={difficultyFilter}
-              label="Filter by Difficulty"
-              onChange={handleDifficultyFilterChange}
-            >
-              <MenuItem value="">All Difficulties</MenuItem>
-              {uniqueDifficulties.map(difficulty => (
-                <MenuItem key={difficulty} value={difficulty}>{difficulty}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        )}
       </Box>
-      
-      {/* Active filters */}
-      {difficultyFilter && (
-        <Box sx={{ mb: 3 }}>
-          <Chip 
-            label={`Difficulty: ${difficultyFilter}`}
-            onDelete={() => setDifficultyFilter('')}
-            color="primary"
-            variant="outlined"
-          />
-        </Box>
-      )}
       
       {/* Scenarios grid */}
       <Box sx={{ 
@@ -999,16 +967,7 @@ const TopicDetails = () => {
           )}
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={handleCloseViewDialog}>Close</Button>
-          <Button
-            onClick={() => {
-              handleCloseViewDialog();
-              handleEditScenario(scenarioToView?.id);
-            }}
-            variant="outlined"
-          >
-            Edit Scenario
-          </Button>
+          <Button onClick={handleCloseViewDialog} variant="contained">Close</Button>
         </DialogActions>
       </Dialog>
     </Box>

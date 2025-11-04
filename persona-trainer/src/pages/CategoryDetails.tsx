@@ -12,7 +12,11 @@ import {
   DialogActions,
   Divider,
   Alert,
-  CircularProgress
+  CircularProgress,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
@@ -27,7 +31,10 @@ interface TopicWithScenarios {
   details: string;
   user_role: string;
   scenarioCount: number;
+  created_at: string;
 }
+
+type SortOption = 'date-newest' | 'date-oldest' | 'name-asc' | 'name-desc';
 
 const CategoryDetails = () => {
   const { id } = useParams<{ id: string }>();
@@ -47,6 +54,7 @@ const CategoryDetails = () => {
   const [topicToDelete, setTopicToDelete] = useState<TopicWithScenarios | null>(null);
   const [saving, setSaving] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [sortBy, setSortBy] = useState<SortOption>('date-newest');
 
   // Form state for new topic
   const [newTopic, setNewTopic] = useState({
@@ -304,17 +312,32 @@ const CategoryDetails = () => {
     }
   };
 
-  // Filter topics based on search term
-  const filteredTopics = topics.filter(topic =>
-    topic.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    topic.details.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Filter and sort topics based on search term and sort option
+  const filteredTopics = topics
+    .filter(topic =>
+      topic.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      topic.details.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+    .sort((a, b) => {
+      switch (sortBy) {
+        case 'date-newest':
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        case 'date-oldest':
+          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+        case 'name-asc':
+          return a.name.localeCompare(b.name);
+        case 'name-desc':
+          return b.name.localeCompare(a.name);
+        default:
+          return 0;
+      }
+    });
 
   // Render admin view with topic cards
   const renderAdminView = () => (
     <Box>
-      {/* Search and Add Topic Button */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+      {/* Search, Sort, and Add Topic Button */}
+      <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap', alignItems: 'center' }}>
         <TextField
           placeholder="Search topics..."
           variant="outlined"
@@ -328,12 +351,30 @@ const CategoryDetails = () => {
               </InputAdornment>
             )
           }}
-          sx={{ width: 300 }}
+          sx={{ flexGrow: 1, minWidth: 250, maxWidth: 400 }}
         />
+
+        <FormControl size="small" sx={{ minWidth: 200 }}>
+          <InputLabel id="sort-by-label">Sort By</InputLabel>
+          <Select
+            labelId="sort-by-label"
+            id="sort-by-select"
+            value={sortBy}
+            label="Sort By"
+            onChange={(e) => setSortBy(e.target.value as SortOption)}
+          >
+            <MenuItem value="date-newest">Date Added (Newest)</MenuItem>
+            <MenuItem value="date-oldest">Date Added (Oldest)</MenuItem>
+            <MenuItem value="name-asc">Name (A-Z)</MenuItem>
+            <MenuItem value="name-desc">Name (Z-A)</MenuItem>
+          </Select>
+        </FormControl>
+
         <Button
           variant="contained"
           startIcon={<AddIcon />}
           onClick={handleOpenAddTopicDialog}
+          sx={{ ml: 'auto' }}
         >
           Add Topic
         </Button>
@@ -415,7 +456,13 @@ const CategoryDetails = () => {
         <Button
           startIcon={<ArrowBackIcon />}
           onClick={() => navigate('/categories')}
-          sx={{ textTransform: 'none' }}
+          sx={{
+            textTransform: 'uppercase',
+            boxShadow: 'none',
+            '&:hover': {
+              boxShadow: 'none'
+            }
+          }}
         >
           Back To Categories
         </Button>

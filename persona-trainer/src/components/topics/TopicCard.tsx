@@ -7,7 +7,8 @@ import {
   Box,
   Button,
   CardActions,
-  Chip
+  Chip,
+  Tooltip
 } from '@mui/material';
 
 export interface TopicProps {
@@ -34,6 +35,15 @@ const TopicCard: React.FC<TopicProps> = ({
   onView
 }) => {
   console.log('TopicCard props:', { id, name, onView: !!onView });
+
+  // Combine overview with role information
+  const fullText = `${overview}\n\nYour role: ${userRole}`;
+
+  // Calculate if we need to show "more" based on line height
+  // Approximate: 2 lines at body2 is roughly 48-50 characters per line = 100 chars
+  const shouldShowMore = fullText.length > 100;
+  const displayText = shouldShowMore ? fullText.substring(0, 100) : fullText;
+
   return (
     <Card
       elevation={2}
@@ -67,54 +77,90 @@ const TopicCard: React.FC<TopicProps> = ({
         )}
       </Box>
       <CardContent sx={{ flexGrow: 1, bgcolor: 'background.paper' }}>
-        <Typography gutterBottom variant="h5" component="div">
+        <Typography gutterBottom variant="h6" component="div">
           {name}
         </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          {overview.length > 120 ? `${overview.substring(0, 120)}...` : overview}
+        <Typography
+          variant="body2"
+          color="text.secondary"
+          sx={{
+            mb: 2,
+            display: '-webkit-box',
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis'
+          }}
+        >
+          {displayText}
+          {shouldShowMore && (
+            <>
+              {'... '}
+              <Tooltip
+                title={
+                  <Box sx={{ whiteSpace: 'pre-line' }}>
+                    {fullText}
+                  </Box>
+                }
+                arrow
+              >
+                <Typography
+                  component="span"
+                  color="primary"
+                  sx={{
+                    cursor: 'pointer',
+                    '&:hover': {
+                      textDecoration: 'underline'
+                    }
+                  }}
+                >
+                  more
+                </Typography>
+              </Tooltip>
+            </>
+          )}
         </Typography>
         <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-          <Chip 
-            label={`${scenarioCount} Scenarios`} 
-            size="small" 
-            color="primary" 
-            variant="outlined" 
-          />
-          <Chip 
-            label={`Role: ${userRole}`} 
-            size="small" 
-            color="secondary" 
-            variant="outlined" 
+          <Chip
+            label={`${scenarioCount} Scenarios`}
+            size="small"
+            color="primary"
+            variant="outlined"
           />
         </Box>
       </CardContent>
-      <CardActions sx={{ bgcolor: 'background.paper' }}>
+      <CardActions sx={{ bgcolor: 'background.paper', p: 2, pt: 0, gap: 1 }}>
         {onView && (
-          <Button 
-            size="small" 
+          <Button
+            variant="contained"
+            color="warning"
+            fullWidth
             onClick={() => {
               console.log('View Scenarios button clicked for:', id);
               onView(id);
             }}
           >
-            View Scenarios
+            SCENARIOS
           </Button>
         )}
         {onEdit && (
-          <Button 
-            size="small" 
+          <Button
+            variant="contained"
+            color="warning"
+            fullWidth
             onClick={() => onEdit(id)}
           >
-            Edit
+            EDIT
           </Button>
         )}
         {onDelete && (
-          <Button 
-            size="small" 
-            color="error" 
+          <Button
+            variant="contained"
+            color="error"
+            fullWidth
             onClick={() => onDelete(id)}
           >
-            Delete
+            DELETE
           </Button>
         )}
       </CardActions>
