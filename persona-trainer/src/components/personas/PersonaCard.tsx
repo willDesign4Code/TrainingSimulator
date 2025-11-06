@@ -9,8 +9,6 @@ import {
   CardActions,
   Chip
 } from '@mui/material';
-import PublicIcon from '@mui/icons-material/Public';
-import LockIcon from '@mui/icons-material/Lock';
 
 export interface PersonaProps {
   id: string;
@@ -64,24 +62,6 @@ const PersonaCard: React.FC<PersonaProps> = ({
             sx={{ objectFit: 'cover' }}
           />
         )}
-        <Box sx={{ position: 'absolute', top: 8, right: 8 }}>
-          <Chip
-            icon={isPublic ? <PublicIcon /> : <LockIcon />}
-            label={isPublic ? 'Public' : 'Private'}
-            color={isPublic ? 'success' : 'default'}
-            size="small"
-            sx={{
-              bgcolor: 'rgba(255, 255, 255, 0.95)',
-              fontWeight: 600,
-              '& .MuiChip-icon': {
-                color: isPublic ? 'success.dark' : 'text.secondary'
-              },
-              '& .MuiChip-label': {
-                color: isPublic ? 'success.dark' : 'text.primary'
-              }
-            }}
-          />
-        </Box>
       </Box>
       <CardContent sx={{ flexGrow: 1, bgcolor: 'background.paper' }}>
         <Typography gutterBottom variant="h5" component="div">
@@ -90,9 +70,15 @@ const PersonaCard: React.FC<PersonaProps> = ({
         <Typography variant="body2" color="text.secondary">
           Age: {age}
         </Typography>
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" color="text.secondary" gutterBottom>
           Pronouns: {pronouns}
         </Typography>
+        <Chip
+          label={isPublic ? 'Public' : 'Private'}
+          size="small"
+          color={isPublic ? 'success' : 'default'}
+          variant="outlined"
+        />
       </CardContent>
       <CardActions sx={{ bgcolor: 'background.paper' }}>
         {onEdit && (
