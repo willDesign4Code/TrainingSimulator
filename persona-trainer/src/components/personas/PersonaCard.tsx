@@ -70,7 +70,16 @@ const PersonaCard: React.FC<PersonaProps> = ({
             label={isPublic ? 'Public' : 'Private'}
             color={isPublic ? 'success' : 'default'}
             size="small"
-            sx={{ bgcolor: 'rgba(255, 255, 255, 0.9)' }}
+            sx={{
+              bgcolor: 'rgba(255, 255, 255, 0.95)',
+              fontWeight: 600,
+              '& .MuiChip-icon': {
+                color: isPublic ? 'success.dark' : 'text.secondary'
+              },
+              '& .MuiChip-label': {
+                color: isPublic ? 'success.dark' : 'text.primary'
+              }
+            }}
           />
         </Box>
       </Box>
