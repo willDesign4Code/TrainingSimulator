@@ -143,7 +143,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signUp = async (email: string, password: string, fullName: string) => {
     try {
-      const { data, error} = await supabase.auth.signUp({
+      const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -153,25 +153,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         },
       });
 
-      if (error) return { error };
+      // Note: User profile creation is handled automatically by database trigger
+      // See: persona-trainer/sql/stage-2-migrations/20251119_add_user_creation_trigger.sql
 
-      // If sign up successful and user is created, update the users table
-      if (data.user) {
-        const { error: profileError } = await supabase
-          .from('users')
-          .insert([{
-            id: data.user.id,
-            email: data.user.email,
-            name: fullName,
-            role: 'employee', // Default role
-          }]);
-
-        if (profileError) {
-          console.error('Error creating user profile:', profileError);
-        }
-      }
-
-      return { error: null };
+      return { error };
     } catch (error) {
       return { error: error as Error };
     }
