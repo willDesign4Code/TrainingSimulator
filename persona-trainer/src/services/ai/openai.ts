@@ -141,12 +141,41 @@ class OpenAIService {
   /**
    * Create a system prompt for training scenarios with persona-based roleplay
    */
-  createTrainingSystemPrompt(trainingTitle: string, scenarioDetails?: string, personaContext?: string): string {
+  createTrainingSystemPrompt(
+    trainingTitle: string,
+    scenarioDetails?: string,
+    personaContext?: string,
+    documentContext?: string,
+    documentMode?: 'augmented' | 'document_only'
+  ): string {
+    if (documentMode === 'document_only' && documentContext) {
+      return `You are roleplaying as a customer/client in a training simulation for "${trainingTitle}".
+
+${personaContext ? `PERSONA CONTEXT:\n${personaContext}\n` : ''}
+
+REFERENCE DOCUMENTS:
+The following documents contain the authoritative information for this training session. Ground your responses in this material.
+
+${documentContext}
+
+CRITICAL INSTRUCTIONS:
+- Stay completely IN CHARACTER as the persona described above
+- Your responses must be grounded in the REFERENCE DOCUMENTS above
+- DO NOT introduce yourself as an "AI training assistant"
+- DO NOT ask "how can I help you" - YOU are the one who needs help
+- Start the conversation immediately with your complaint/issue/request as the persona would
+- Keep responses concise and conversational (2-4 sentences typically)
+
+Begin the roleplay immediately without breaking character.`;
+    }
+
     return `You are roleplaying as a customer/client in a training simulation for "${trainingTitle}".
 
 ${personaContext ? `PERSONA CONTEXT:\n${personaContext}\n` : ''}
 
 ${scenarioDetails ? `SCENARIO DETAILS:\n${scenarioDetails}\n` : ''}
+
+${documentContext ? `ADDITIONAL KNOWLEDGE:\nThe following reference material is available to you. Use it to answer questions accurately and ground your responses in real policy and procedure.\n\n${documentContext}\n` : ''}
 
 CRITICAL INSTRUCTIONS:
 - Stay completely IN CHARACTER as the persona described above

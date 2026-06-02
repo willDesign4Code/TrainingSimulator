@@ -15,11 +15,16 @@ import {
   FormControlLabel,
   InputLabel,
   Select,
+  SelectChangeEvent,
   MenuItem,
   Switch,
   Divider,
   Alert,
-  CircularProgress
+  CircularProgress,
+  Chip,
+  Radio,
+  RadioGroup,
+  FormHelperText
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
@@ -27,7 +32,10 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import EditIcon from '@mui/icons-material/Edit';
 import ScenarioCard from '../components/scenarios/ScenarioCard';
 import RubricsManager from '../components/rubrics/RubricsManager';
+import UploadDocumentDialog from '../components/documents/UploadDocumentDialog';
 import { supabase } from '../services/supabase/client';
+import type { TrainingDocument } from '../services/supabase/client';
+import { estimateCharCount } from '../services/documents/tokenGuard';
 import { useAuth } from '../contexts/AuthContext';
 
 const mockTopics = [
@@ -147,6 +155,7 @@ const TopicDetails = () => {
   const [topic, setTopic] = useState<any | null>(null);
   const [scenarios, setScenarios] = useState<any[]>([]);
   const [personas, setPersonas] = useState<any[]>([]);
+  const [availableDocuments, setAvailableDocuments] = useState<Array<Pick<TrainingDocument, 'id' | 'name' | 'file_type' | 'character_count'>>>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
@@ -155,6 +164,7 @@ const TopicDetails = () => {
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
   const [openEditTopicDialog, setOpenEditTopicDialog] = useState(false);
   const [openViewDialog, setOpenViewDialog] = useState(false);
+  const [openUploadDocDialog, setOpenUploadDocDialog] = useState(false);
   const [scenarioToDelete, setScenarioToDelete] = useState<string | null>(null);
   const [scenarioToView, setScenarioToView] = useState<any | null>(null);
   const [editingScenarioId, setEditingScenarioId] = useState<string | null>(null);
@@ -167,7 +177,9 @@ const TopicDetails = () => {
     overview: '',
     persona_id: '',
     tone: '',
-    additionalContext: ''
+    additionalContext: '',
+    selectedDocumentIds: [] as string[],
+    documentMode: 'augmented' as 'augmented' | 'document_only',
   });
   
   // Form state for editing the topic
@@ -198,12 +210,13 @@ const TopicDetails = () => {
           return;
         }
 
-        // Fetch scenarios for this topic with persona data
+        // Fetch scenarios for this topic with persona data and document counts
         const { data: scenariosData, error: scenariosError } = await supabase
           .from('scenarios')
           .select(`
             *,
-            persona:personas(*)
+            persona:personas(*),
+            scenario_documents(count)
           `)
           .eq('topic_id', id)
           .order('created_at', { ascending: false });
@@ -219,9 +232,16 @@ const TopicDetails = () => {
 
         if (personasError) throw personasError;
 
+        // Fetch available training documents for the scenario dialog
+        const { data: docsData } = await supabase
+          .from('training_documents')
+          .select('id, name, file_type, character_count')
+          .order('name', { ascending: true });
+
         setTopic(topicData);
         setScenarios(scenariosData || []);
         setPersonas(personasData || []);
+        setAvailableDocuments(docsData || []);
         setError(null);
 
       } catch (err) {
@@ -260,7 +280,9 @@ const TopicDetails = () => {
       overview: '',
       persona_id: '',
       tone: '',
-      additionalContext: ''
+      additionalContext: '',
+      selectedDocumentIds: [],
+      documentMode: 'augmented',
     });
   };
   
@@ -340,8 +362,11 @@ const TopicDetails = () => {
         persona_id: newScenario.persona_id,
         persona_tone: newScenario.tone.trim() || null,
         persona_additional_details: newScenario.additionalContext.trim() || null,
+        document_mode: newScenario.documentMode,
         is_public: true
       };
+
+      let savedScenarioId: string;
 
       if (editingScenarioId) {
         // Update existing scenario
@@ -351,21 +376,42 @@ const TopicDetails = () => {
           .eq('id', editingScenarioId);
 
         if (updateError) throw updateError;
+        savedScenarioId = editingScenarioId;
       } else {
-        // Create new scenario
-        const { error: insertError } = await supabase
+        // Create new scenario, capturing the returned ID
+        const { data: insertedScenario, error: insertError } = await supabase
           .from('scenarios')
-          .insert([scenarioData]);
+          .insert([scenarioData])
+          .select('id')
+          .single();
 
         if (insertError) throw insertError;
+        savedScenarioId = insertedScenario.id;
       }
 
-      // Refresh scenarios list
+      // Sync scenario_documents: delete existing then re-insert selected
+      const { error: deleteError } = await supabase
+        .from('scenario_documents')
+        .delete()
+        .eq('scenario_id', savedScenarioId);
+      if (deleteError) throw deleteError;
+      if (newScenario.selectedDocumentIds.length > 0) {
+        const { error: linkError } = await supabase
+          .from('scenario_documents')
+          .insert(newScenario.selectedDocumentIds.map(docId => ({
+            scenario_id: savedScenarioId,
+            document_id: docId,
+          })));
+        if (linkError) throw linkError;
+      }
+
+      // Refresh scenarios list with document counts
       const { data: scenariosData, error: scenariosError } = await supabase
         .from('scenarios')
         .select(`
           *,
-          persona:personas(*)
+          persona:personas(*),
+          scenario_documents(count)
         `)
         .eq('topic_id', id)
         .order('created_at', { ascending: false });
@@ -422,23 +468,29 @@ const TopicDetails = () => {
   };
   
   // Handle editing a scenario
-  const handleEditScenario = (scenarioId: string) => {
-    // Find the scenario to edit
+  const handleEditScenario = async (scenarioId: string) => {
     const scenarioToEdit = scenarios.find(scenario => scenario.id === scenarioId);
-    if (scenarioToEdit) {
-      setEditingScenarioId(scenarioId);
-      // Populate the form with current scenario data (map database fields)
-      setNewScenario({
-        title: scenarioToEdit.title || '',
-        overview: scenarioToEdit.details || '',
-        persona_id: scenarioToEdit.persona_id || '',
-        tone: scenarioToEdit.persona_tone || '',
-        additionalContext: scenarioToEdit.persona_additional_details || ''
-      });
+    if (!scenarioToEdit) return;
 
-      // Open the dialog
-      setOpenAddDialog(true);
-    }
+    setEditingScenarioId(scenarioId);
+
+    // Fetch existing linked documents for this scenario
+    const { data: sdData } = await supabase
+      .from('scenario_documents')
+      .select('document_id')
+      .eq('scenario_id', scenarioId);
+
+    setNewScenario({
+      title: scenarioToEdit.title || '',
+      overview: scenarioToEdit.details || '',
+      persona_id: scenarioToEdit.persona_id || '',
+      tone: scenarioToEdit.persona_tone || '',
+      additionalContext: scenarioToEdit.persona_additional_details || '',
+      selectedDocumentIds: sdData?.map((r: { document_id: string }) => r.document_id) ?? [],
+      documentMode: scenarioToEdit.document_mode ?? 'augmented',
+    });
+
+    setOpenAddDialog(true);
   };
   
   // Handle opening the edit topic dialog
@@ -672,6 +724,7 @@ const TopicDetails = () => {
             overview={scenario.details || ''}
             customerPersona={scenario.persona?.name || 'Unknown Persona'}
             imageUrl={scenario.persona?.image_url || ''}
+            documentCount={scenario.scenario_documents?.[0]?.count ?? 0}
             onView={handleViewScenario}
             onEdit={handleEditScenario}
             onDelete={handleOpenDeleteDialog}
@@ -804,6 +857,135 @@ const TopicDetails = () => {
             
             <Divider sx={{ my: 2 }} />
 
+            {/* Training Documents section */}
+            <Typography variant="subtitle2" color="text.secondary">Training Documents</Typography>
+
+            <FormControl fullWidth>
+              <InputLabel id="attach-documents-label">Attach Documents</InputLabel>
+              <Select
+                multiple
+                labelId="attach-documents-label"
+                value={newScenario.selectedDocumentIds}
+                label="Attach Documents"
+                onChange={(e: SelectChangeEvent<string[]>) => {
+                  const value = e.target.value;
+                  const ids = typeof value === 'string' ? value.split(',') : value;
+                  if (ids.length <= 10) {
+                    setNewScenario(prev => ({ ...prev, selectedDocumentIds: ids }));
+                  }
+                }}
+                renderValue={(selected) => (
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                    {selected.map((docId) => {
+                      const doc = availableDocuments.find(d => d.id === docId);
+                      return (
+                        <Chip
+                          key={docId}
+                          label={doc?.name ?? docId}
+                          size="small"
+                          onDelete={(e) => {
+                            e.stopPropagation();
+                            setNewScenario(prev => ({
+                              ...prev,
+                              selectedDocumentIds: prev.selectedDocumentIds.filter(id => id !== docId),
+                            }));
+                          }}
+                          onMouseDown={(e) => e.stopPropagation()}
+                        />
+                      );
+                    })}
+                  </Box>
+                )}
+              >
+                {availableDocuments.length === 0 ? (
+                  <MenuItem disabled>No documents uploaded yet</MenuItem>
+                ) : (
+                  availableDocuments.map(doc => (
+                    <MenuItem
+                      key={doc.id}
+                      value={doc.id}
+                      disabled={
+                        newScenario.selectedDocumentIds.length >= 10 &&
+                        !newScenario.selectedDocumentIds.includes(doc.id)
+                      }
+                    >
+                      {doc.name} <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 1 }}>({doc.file_type.toUpperCase()})</Typography>
+                    </MenuItem>
+                  ))
+                )}
+              </Select>
+              <FormHelperText>
+                {(() => {
+                  const selectedDocs = availableDocuments.filter(d =>
+                    newScenario.selectedDocumentIds.includes(d.id)
+                  );
+                  const totalChars = estimateCharCount(selectedDocs);
+                  if (totalChars === 0) return 'Select up to 10 documents to attach to this scenario';
+                  const color = totalChars > 32000 ? 'error' : totalChars > 24000 ? 'warning.main' : undefined;
+                  return (
+                    <Box component="span" sx={color ? { color } : {}}>
+                      ~{totalChars.toLocaleString()} chars / ~{Math.ceil(totalChars / 4).toLocaleString()} tokens
+                      {totalChars > 32000 ? ' — will be truncated (limit: 32,000 chars)' : ' (limit: 32,000 chars)'}
+                    </Box>
+                  );
+                })()}
+              </FormHelperText>
+            </FormControl>
+
+            <Box>
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={() => setOpenUploadDocDialog(true)}
+              >
+                Upload New Document
+              </Button>
+            </Box>
+
+            {/* Document mode (only shown when ≥1 document selected) */}
+            {newScenario.selectedDocumentIds.length > 0 && (
+              <Box>
+                <Typography id="document-mode-label" variant="subtitle2" color="text.secondary" gutterBottom>
+                  Document Mode
+                </Typography>
+                <RadioGroup
+                  aria-labelledby="document-mode-label"
+                  value={newScenario.documentMode}
+                  onChange={(e) => setNewScenario(prev => ({
+                    ...prev,
+                    documentMode: e.target.value as 'augmented' | 'document_only',
+                  }))}
+                >
+                  <FormControlLabel
+                    value="augmented"
+                    control={<Radio size="small" />}
+                    label={
+                      <Box>
+                        <Typography variant="body2">Augmented (Recommended)</Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          Documents supplement the full scenario and persona details
+                        </Typography>
+                      </Box>
+                    }
+                  />
+                  <FormControlLabel
+                    value="document_only"
+                    control={<Radio size="small" />}
+                    label={
+                      <Box>
+                        <Typography variant="body2">Document-Only</Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          AI focuses primarily on the documents; persona details are minimal
+                        </Typography>
+                      </Box>
+                    }
+                  />
+                </RadioGroup>
+              </Box>
+            )}
+
+            <Divider sx={{ my: 2 }} />
+
             {/* Rubrics Section - Note: Rubrics are managed separately */}
             <Alert severity="info">
               <Typography variant="body2">
@@ -897,6 +1079,23 @@ const TopicDetails = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Upload Document from scenario dialog */}
+      <UploadDocumentDialog
+        open={openUploadDocDialog}
+        onClose={() => setOpenUploadDocDialog(false)}
+        onSuccess={(doc: TrainingDocument) => {
+          setAvailableDocuments(prev => [
+            { id: doc.id, name: doc.name, file_type: doc.file_type, character_count: doc.character_count ?? null },
+            ...prev,
+          ]);
+          setNewScenario(prev => ({
+            ...prev,
+            selectedDocumentIds: [...prev.selectedDocumentIds, doc.id],
+          }));
+          setOpenUploadDocDialog(false);
+        }}
+      />
 
       {/* View Scenario Dialog */}
       <Dialog open={openViewDialog} onClose={handleCloseViewDialog} maxWidth="md" fullWidth>

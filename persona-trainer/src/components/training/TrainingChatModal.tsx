@@ -25,7 +25,9 @@ import MicOffIcon from '@mui/icons-material/MicOff';
 import SpeedIcon from '@mui/icons-material/Speed';
 import openAIService from '../../services/ai/openai';
 import { supabase } from '../../services/supabase/client';
+import type { TrainingDocument } from '../../services/supabase/client';
 import { scoreConversation, Rubric, ScoringResult } from '../../services/ai/scoring';
+import { buildDocumentContext } from '../../services/documents/tokenGuard';
 import ScoringResultsModal from './ScoringResultsModal';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -67,6 +69,7 @@ const TrainingChatModal = ({ open, onClose, trainingTitle, scenarioId }: Trainin
   // Scenario and Persona state
   const [scenario, setScenario] = useState<any | null>(null);
   const [persona, setPersona] = useState<any | null>(null);
+  const [linkedDocuments, setLinkedDocuments] = useState<TrainingDocument[]>([]);
   const [scenarioLoading, setScenarioLoading] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -89,12 +92,15 @@ const TrainingChatModal = ({ open, onClose, trainingTitle, scenarioId }: Trainin
         try {
           setScenarioLoading(true);
 
-          // Fetch scenario with persona data
+          // Fetch scenario with persona and linked documents
           const { data: scenarioData, error: scenarioError } = await supabase
             .from('scenarios')
             .select(`
               *,
-              persona:personas(*)
+              persona:personas(*),
+              scenario_documents(
+                training_documents(*)
+              )
             `)
             .eq('id', scenarioId)
             .single();
@@ -103,6 +109,11 @@ const TrainingChatModal = ({ open, onClose, trainingTitle, scenarioId }: Trainin
 
           setScenario(scenarioData);
           setPersona(scenarioData?.persona || null);
+
+          const docs: TrainingDocument[] = (scenarioData?.scenario_documents ?? [])
+            .map((sd: { training_documents: TrainingDocument }) => sd.training_documents)
+            .filter(Boolean);
+          setLinkedDocuments(docs);
 
           // Fetch rubrics
           const { data: rubricsData, error: rubricsError } = await supabase
@@ -135,12 +146,22 @@ const TrainingChatModal = ({ open, onClose, trainingTitle, scenarioId }: Trainin
         setIsLoading(true);
 
         try {
-          // Build persona context from database fields
-          const personaContext = `You are ${persona.name}, a ${persona.age}-year-old ${persona.occupation}.
+          const documentMode = scenario.document_mode ?? 'augmented';
+          const documentContext = linkedDocuments.length > 0
+            ? buildDocumentContext(linkedDocuments)
+            : undefined;
+
+          // Minimal context for document-only mode (name, age, occupation, emotional state)
+          const minimalPersonaContext = `You are ${persona.name}, a ${persona.age}-year-old ${persona.occupation}.${persona.emotional_state ? `\nCurrent emotional state: ${persona.emotional_state}.` : ''}`;
+
+          // Full context for augmented mode (adds interests, goals, communication style)
+          const fullPersonaContext = `You are ${persona.name}, a ${persona.age}-year-old ${persona.occupation}.
 ${persona.interests ? `Your interests include: ${persona.interests}.` : ''}
 ${persona.goals ? `Your goals are: ${persona.goals}.` : ''}
 ${persona.communication_style ? `Communication style: ${persona.communication_style}.` : ''}
 ${persona.emotional_state ? `Current emotional state: ${persona.emotional_state}.` : ''}`;
+
+          const personaContext = documentMode === 'document_only' ? minimalPersonaContext : fullPersonaContext;
 
           // Build scenario details from database fields
           let scenarioDetails = scenario.details || '';
@@ -155,7 +176,9 @@ ${persona.emotional_state ? `Current emotional state: ${persona.emotional_state}
           const systemPrompt = openAIService.createTrainingSystemPrompt(
             scenario.title,
             scenarioDetails,
-            personaContext
+            personaContext,
+            documentContext,
+            documentMode
           );
           conversationHistoryRef.current = [{ role: 'system', content: systemPrompt }];
 
@@ -198,6 +221,7 @@ ${persona.emotional_state ? `Current emotional state: ${persona.emotional_state}
       initializedRef.current = false;
       setMessages([]);
       conversationHistoryRef.current = [];
+      setLinkedDocuments([]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, scenario, persona, scenarioLoading]);

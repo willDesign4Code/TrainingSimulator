@@ -9,6 +9,7 @@ import CategoryTraining from './pages/CategoryTraining';
 import TopicDetails from './pages/TopicDetails';
 import Personas from './pages/Personas';
 import Assignments from './pages/Assignments';
+import TrainingDocuments from './pages/TrainingDocuments';
 import { Box, CircularProgress } from '@mui/material';
 
 // Protected route component
@@ -64,6 +65,7 @@ function App() {
             <Route path="personas" element={<Personas />} />
             <Route path="personas/:id" element={<div>Persona Details (Coming Soon)</div>} />
             <Route path="assignments" element={<Assignments />} />
+            <Route path="training-documents" element={<TrainingDocuments />} />
             <Route path="users" element={<div>Users (Coming Soon)</div>} />
             <Route path="training/:id" element={<div>Training Session (Coming Soon)</div>} />
             <Route path="history" element={<div>Training History (Coming Soon)</div>} />

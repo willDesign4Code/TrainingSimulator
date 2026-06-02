@@ -51,6 +51,7 @@ export type Scenario = {
   persona_id: string;
   persona_tone?: string;
   persona_additional_details?: string;
+  document_mode?: 'augmented' | 'document_only';
   created_by: string;
   is_public: boolean;
   created_at: string;
@@ -97,6 +98,28 @@ export type TrainingSession = {
   feedback?: string;
   reviewed_by?: string;
   review_notes?: string;
+};
+
+export type TrainingDocument = {
+  id: string;
+  name: string;
+  description?: string;
+  file_type: 'pdf' | 'docx' | 'txt' | 'md';
+  file_size: number;
+  file_url: string;
+  extracted_text?: string;
+  character_count?: number;
+  uploaded_by: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ScenarioDocument = {
+  id: string;
+  scenario_id: string;
+  document_id: string;
+  created_at: string;
+  training_document?: TrainingDocument;
 };
 
 export type ContentAssignment = {
