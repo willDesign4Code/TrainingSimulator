@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -75,21 +75,21 @@ const UploadDocumentDialog = ({ open, onClose, onSuccess }: UploadDocumentDialog
     e.target.value = '';
   };
 
-  const handleDragOver = useCallback((e: React.DragEvent) => {
+  const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragOver(true);
-  }, []);
+  };
 
-  const handleDragLeave = useCallback(() => {
+  const handleDragLeave = () => {
     setIsDragOver(false);
-  }, []);
+  };
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
+  const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragOver(false);
     const file = e.dataTransfer.files?.[0];
     if (file) applyFile(file);
-  }, []);
+  };
 
   const handleUpload = async () => {
     if (!selectedFile || !name.trim() || !user) return;
@@ -124,9 +124,22 @@ const UploadDocumentDialog = ({ open, onClose, onSuccess }: UploadDocumentDialog
         .select()
         .single();
 
-      if (docError) throw docError;
+      if (docError) {
+        // Best-effort cleanup — don't let the remove error mask the original
+        await supabase.storage.from('training-documents').remove([storageData.path]).catch(() => {});
+        throw docError;
+      }
 
       onSuccess(docData as TrainingDocument);
+
+      if (!extraction) {
+        // Keep dialog open so the user can see the extraction warning before closing
+        setSelectedFile(null);
+        setName('');
+        setDescription('');
+        return;
+      }
+
       handleReset();
       onClose();
     } catch (err) {
@@ -143,6 +156,16 @@ const UploadDocumentDialog = ({ open, onClose, onSuccess }: UploadDocumentDialog
       <DialogTitle>Upload Training Document</DialogTitle>
       <DialogContent>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+          {/* Live region for upload status announcements */}
+          <Box
+            role="status"
+            aria-live="polite"
+            aria-atomic
+            sx={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0,0,0,0)' }}
+          >
+            {uploading ? 'Uploading document, please wait.' : ''}
+          </Box>
+
           {error && (
             <Alert severity="error" onClose={() => setError(null)}>
               {error}
@@ -151,10 +174,19 @@ const UploadDocumentDialog = ({ open, onClose, onSuccess }: UploadDocumentDialog
 
           {/* Drop zone */}
           <Box
+            role={selectedFile ? undefined : 'button'}
+            tabIndex={selectedFile ? -1 : 0}
+            aria-label={selectedFile ? undefined : 'Upload file. Drag and drop or press Enter to browse'}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
             onClick={() => !selectedFile && fileInputRef.current?.click()}
+            onKeyDown={(e) => {
+              if (!selectedFile && (e.key === 'Enter' || e.key === ' ')) {
+                e.preventDefault();
+                fileInputRef.current?.click();
+              }
+            }}
             sx={{
               border: '2px dashed',
               borderColor: isDragOver ? 'primary.main' : selectedFile ? 'success.main' : 'grey.400',
@@ -164,6 +196,7 @@ const UploadDocumentDialog = ({ open, onClose, onSuccess }: UploadDocumentDialog
               cursor: selectedFile ? 'default' : 'pointer',
               bgcolor: isDragOver ? 'primary.50' : 'grey.50',
               transition: 'border-color 0.2s, background-color 0.2s',
+              '&:focus-visible': { outline: '2px solid', outlineColor: 'primary.main', outlineOffset: 2 },
             }}
           >
             <UploadFileIcon sx={{ fontSize: 40, color: selectedFile ? 'success.main' : 'grey.400', mb: 1 }} />
@@ -220,7 +253,7 @@ const UploadDocumentDialog = ({ open, onClose, onSuccess }: UploadDocumentDialog
             disabled={uploading}
           />
 
-          {uploading && <LinearProgress />}
+          {uploading && <LinearProgress aria-label="Document upload progress" />}
 
           {extractionWarning && (
             <Alert severity="warning">

@@ -95,7 +95,7 @@ const TrainingDocuments = () => {
 
       const rows: DocumentRow[] = (docsData || []).map((d: TrainingDocument & { scenario_documents?: { count: number }[] }) => ({
         ...d,
-        uploader_name: userMap[d.uploaded_by] ?? d.uploaded_by,
+        uploader_name: userMap[d.uploaded_by] ?? 'Unknown user',
         scenario_count: d.scenario_documents?.[0]?.count ?? 0,
       }));
       setDocuments(rows);
@@ -120,7 +120,7 @@ const TrainingDocuments = () => {
   const handleUploadSuccess = (doc: TrainingDocument) => {
     const newRow: DocumentRow = {
       ...doc,
-      uploader_name: users[doc.uploaded_by] ?? doc.uploaded_by,
+      uploader_name: users[doc.uploaded_by] ?? 'Unknown user',
       scenario_count: 0,
     };
     setDocuments((prev) => [newRow, ...prev]);
@@ -148,10 +148,16 @@ const TrainingDocuments = () => {
 
   const handleOpenDelete = async (doc: DocumentRow) => {
     setSelectedDoc(doc);
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('scenario_documents')
       .select('scenario_id, scenarios(title)')
       .eq('document_id', doc.id);
+
+    if (error) {
+      setError('Could not load linked scenarios. Please try again.');
+      return;
+    }
+
     setLinkedScenarios(
       (data || []).map((row: { scenario_id: string; scenarios?: { title?: string } }) => ({
         id: row.scenario_id,
@@ -171,7 +177,12 @@ const TrainingDocuments = () => {
         .eq('id', selectedDoc.id);
       if (dbError) throw dbError;
 
-      await supabase.storage.from('training-documents').remove([selectedDoc.file_url]);
+      const { error: storageError } = await supabase.storage
+        .from('training-documents')
+        .remove([selectedDoc.file_url]);
+      if (storageError) {
+        console.warn('Storage file could not be removed:', storageError.message);
+      }
 
       setDocuments((prev) => prev.filter((d) => d.id !== selectedDoc.id));
       setOpenDelete(false);
@@ -310,21 +321,22 @@ const TrainingDocuments = () => {
                       size="small"
                       color={doc.scenario_count > 0 ? 'primary' : 'default'}
                       variant={doc.scenario_count > 0 ? 'filled' : 'outlined'}
+                      aria-label={`${doc.scenario_count} linked scenario${doc.scenario_count !== 1 ? 's' : ''}`}
                     />
                   </TableCell>
                   <TableCell align="right">
                     <Tooltip title="Preview extracted text">
-                      <IconButton size="small" onClick={() => handleOpenPreview(doc)}>
+                      <IconButton size="small" aria-label={`Preview ${doc.name}`} onClick={() => handleOpenPreview(doc)}>
                         <VisibilityIcon fontSize="small" />
                       </IconButton>
                     </Tooltip>
                     <Tooltip title="Download original file">
-                      <IconButton size="small" onClick={() => handleDownload(doc)}>
+                      <IconButton size="small" aria-label={`Download ${doc.name}`} onClick={() => handleDownload(doc)}>
                         <DownloadIcon fontSize="small" />
                       </IconButton>
                     </Tooltip>
                     <Tooltip title="Delete document">
-                      <IconButton size="small" color="error" onClick={() => handleOpenDelete(doc)}>
+                      <IconButton size="small" color="error" aria-label={`Delete ${doc.name}`} onClick={() => handleOpenDelete(doc)}>
                         <DeleteIcon fontSize="small" />
                       </IconButton>
                     </Tooltip>
@@ -365,6 +377,9 @@ const TrainingDocuments = () => {
               </Box>
               {selectedDoc.extracted_text ? (
                 <Box
+                  tabIndex={0}
+                  role="region"
+                  aria-label="Extracted document text"
                   sx={{
                     fontFamily: 'monospace',
                     fontSize: '0.8rem',

@@ -12,8 +12,9 @@ export function buildDocumentContext(documents: TrainingDocument[]): string {
     const block = `--- Document: ${doc.name} ---\n${doc.extracted_text}\n\n`;
 
     if (combined.length + block.length > CHAR_LIMIT) {
-      const remaining = documents.slice(i).filter(d => d.extracted_text).length;
-      combined += `(Document content truncated due to length. ${remaining} document(s) not included.)\n`;
+      // 1 for the current document (index i) + any remaining docs with text after it
+      const notIncluded = 1 + documents.slice(i + 1).filter(d => d.extracted_text).length;
+      combined += `(Document content truncated due to length. ${notIncluded} document(s) not included.)\n`;
       break;
     }
 

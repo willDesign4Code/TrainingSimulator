@@ -1,13 +1,29 @@
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 const ACCEPTED_EXTENSIONS = ['.pdf', '.docx', '.txt', '.md'];
 
+// Some browsers (especially for .md) report 'application/octet-stream' — allow it
+const ACCEPTED_MIME_TYPES: Record<string, true> = {
+  'application/pdf': true,
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': true,
+  'text/plain': true,
+  'text/markdown': true,
+  'application/octet-stream': true,
+};
+
 export function validateFile(file: File): string | null {
-  const ext = '.' + file.name.split('.').pop()?.toLowerCase();
+  const lastDot = file.name.lastIndexOf('.');
+  if (lastDot === -1 || lastDot === file.name.length - 1) {
+    return 'Cannot determine file type. Please ensure the file has a valid extension (.pdf, .docx, .txt, .md).';
+  }
+  const ext = file.name.slice(lastDot).toLowerCase();
   if (!ACCEPTED_EXTENSIONS.includes(ext)) {
-    return `Unsupported file type. Please upload a PDF, Word (.docx), text, or Markdown file.`;
+    return 'Unsupported file type. Please upload a PDF, Word (.docx), text, or Markdown file.';
+  }
+  if (file.type && !ACCEPTED_MIME_TYPES[file.type]) {
+    return 'File type mismatch. Expected PDF, Word, text, or Markdown.';
   }
   if (file.size > MAX_FILE_SIZE) {
-    return `File is too large. Maximum size is 10 MB.`;
+    return 'File is too large. Maximum size is 10 MB.';
   }
   return null;
 }

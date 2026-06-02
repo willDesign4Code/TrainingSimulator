@@ -124,6 +124,7 @@ const ScenarioCard: React.FC<ScenarioProps> = ({
               size="small"
               color="info"
               variant="outlined"
+              aria-label={`${documentCount} training document${documentCount > 1 ? 's' : ''} attached`}
             />
           )}
         </Box>

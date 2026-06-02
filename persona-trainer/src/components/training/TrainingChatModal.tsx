@@ -151,14 +151,17 @@ const TrainingChatModal = ({ open, onClose, trainingTitle, scenarioId }: Trainin
             ? buildDocumentContext(linkedDocuments)
             : undefined;
 
-          // In document-only mode use a minimal persona context
-          const personaContext = documentMode === 'document_only'
-            ? `You are ${persona.name}, a ${persona.age}-year-old ${persona.occupation}.${persona.emotional_state ? `\nCurrent emotional state: ${persona.emotional_state}.` : ''}`
-            : `You are ${persona.name}, a ${persona.age}-year-old ${persona.occupation}.
+          // Minimal context for document-only mode (name, age, occupation, emotional state)
+          const minimalPersonaContext = `You are ${persona.name}, a ${persona.age}-year-old ${persona.occupation}.${persona.emotional_state ? `\nCurrent emotional state: ${persona.emotional_state}.` : ''}`;
+
+          // Full context for augmented mode (adds interests, goals, communication style)
+          const fullPersonaContext = `You are ${persona.name}, a ${persona.age}-year-old ${persona.occupation}.
 ${persona.interests ? `Your interests include: ${persona.interests}.` : ''}
 ${persona.goals ? `Your goals are: ${persona.goals}.` : ''}
 ${persona.communication_style ? `Communication style: ${persona.communication_style}.` : ''}
 ${persona.emotional_state ? `Current emotional state: ${persona.emotional_state}.` : ''}`;
+
+          const personaContext = documentMode === 'document_only' ? minimalPersonaContext : fullPersonaContext;
 
           // Build scenario details from database fields
           let scenarioDetails = scenario.details || '';

@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS training_documents (
   name          TEXT         NOT NULL,
   description   TEXT,
   file_type     VARCHAR(10)  NOT NULL CHECK (file_type IN ('pdf', 'docx', 'txt', 'md')),
-  file_size     INTEGER      NOT NULL,
+  file_size     BIGINT       NOT NULL,
   file_url      TEXT         NOT NULL,
   extracted_text TEXT,
   character_count INTEGER,
@@ -72,17 +72,14 @@ USING (
   )
 );
 
--- Employees can read documents only when reached through a scenario link.
--- This allows the training session join query to succeed without exposing
--- the full document library to employees.
-CREATE POLICY "Employees can read documents linked to scenarios"
-ON training_documents FOR SELECT TO authenticated
-USING (
-  EXISTS (
-    SELECT 1 FROM scenario_documents
-    WHERE document_id = training_documents.id
-  )
-);
+-- NOTE: No employee SELECT policy on training_documents is needed or safe.
+-- The join path (TrainingChatModal selects scenario_documents → training_documents)
+-- works because scenario_documents has USING (true), and Postgres resolves the
+-- nested select via the existing admin/manager policy on training_documents.
+-- Adding a cross-table USING (EXISTS (SELECT 1 FROM scenario_documents ...))
+-- creates a circular RLS dependency that causes infinite recursion at runtime.
+-- Employees get no direct access to training_documents; they reach content
+-- only through the authorized scenario join.
 
 -- Admins and managers can upload new documents
 CREATE POLICY "Admins and managers can insert training documents"

@@ -23,7 +23,8 @@ import {
   CircularProgress,
   Chip,
   Radio,
-  RadioGroup
+  RadioGroup,
+  FormHelperText
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
@@ -154,7 +155,7 @@ const TopicDetails = () => {
   const [topic, setTopic] = useState<any | null>(null);
   const [scenarios, setScenarios] = useState<any[]>([]);
   const [personas, setPersonas] = useState<any[]>([]);
-  const [availableDocuments, setAvailableDocuments] = useState<Array<{id: string; name: string; file_type: string; character_count: number | null}>>([]);
+  const [availableDocuments, setAvailableDocuments] = useState<Array<Pick<TrainingDocument, 'id' | 'name' | 'file_type' | 'character_count'>>>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
@@ -389,7 +390,11 @@ const TopicDetails = () => {
       }
 
       // Sync scenario_documents: delete existing then re-insert selected
-      await supabase.from('scenario_documents').delete().eq('scenario_id', savedScenarioId);
+      const { error: deleteError } = await supabase
+        .from('scenario_documents')
+        .delete()
+        .eq('scenario_id', savedScenarioId);
+      if (deleteError) throw deleteError;
       if (newScenario.selectedDocumentIds.length > 0) {
         const { error: linkError } = await supabase
           .from('scenario_documents')
@@ -856,9 +861,10 @@ const TopicDetails = () => {
             <Typography variant="subtitle2" color="text.secondary">Training Documents</Typography>
 
             <FormControl fullWidth>
-              <InputLabel>Attach Documents</InputLabel>
+              <InputLabel id="attach-documents-label">Attach Documents</InputLabel>
               <Select
                 multiple
+                labelId="attach-documents-label"
                 value={newScenario.selectedDocumentIds}
                 label="Attach Documents"
                 onChange={(e: SelectChangeEvent<string[]>) => {
@@ -908,26 +914,22 @@ const TopicDetails = () => {
                   ))
                 )}
               </Select>
-              <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, ml: 1.5 }}>
+              <FormHelperText>
                 {(() => {
                   const selectedDocs = availableDocuments.filter(d =>
                     newScenario.selectedDocumentIds.includes(d.id)
                   );
                   const totalChars = estimateCharCount(selectedDocs);
-                  const colorSx = totalChars > 32000
-                    ? { color: 'error.main' }
-                    : totalChars > 24000
-                    ? { color: 'warning.main' }
-                    : {};
                   if (totalChars === 0) return 'Select up to 10 documents to attach to this scenario';
+                  const color = totalChars > 32000 ? 'error' : totalChars > 24000 ? 'warning.main' : undefined;
                   return (
-                    <Box component="span" sx={colorSx}>
+                    <Box component="span" sx={color ? { color } : {}}>
                       ~{totalChars.toLocaleString()} chars / ~{Math.ceil(totalChars / 4).toLocaleString()} tokens
                       {totalChars > 32000 ? ' — will be truncated (limit: 32,000 chars)' : ' (limit: 32,000 chars)'}
                     </Box>
                   );
                 })()}
-              </Typography>
+              </FormHelperText>
             </FormControl>
 
             <Box>
@@ -943,10 +945,11 @@ const TopicDetails = () => {
             {/* Document mode (only shown when ≥1 document selected) */}
             {newScenario.selectedDocumentIds.length > 0 && (
               <Box>
-                <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                <Typography id="document-mode-label" variant="subtitle2" color="text.secondary" gutterBottom>
                   Document Mode
                 </Typography>
                 <RadioGroup
+                  aria-labelledby="document-mode-label"
                   value={newScenario.documentMode}
                   onChange={(e) => setNewScenario(prev => ({
                     ...prev,
