@@ -159,9 +159,9 @@ const TrainingDocuments = () => {
     }
 
     setLinkedScenarios(
-      (data || []).map((row: { scenario_id: string; scenarios?: { title?: string } }) => ({
+      (data || []).map((row: { scenario_id: string; scenarios: Array<{ title: string | null }> | null }) => ({
         id: row.scenario_id,
-        title: row.scenarios?.title ?? 'Unknown',
+        title: row.scenarios?.[0]?.title ?? 'Unknown',
       }))
     );
     setOpenDelete(true);

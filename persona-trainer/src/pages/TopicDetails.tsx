@@ -1086,7 +1086,7 @@ const TopicDetails = () => {
         onClose={() => setOpenUploadDocDialog(false)}
         onSuccess={(doc: TrainingDocument) => {
           setAvailableDocuments(prev => [
-            { id: doc.id, name: doc.name, file_type: doc.file_type, character_count: doc.character_count ?? null },
+            { id: doc.id, name: doc.name, file_type: doc.file_type, character_count: doc.character_count ?? undefined },
             ...prev,
           ]);
           setNewScenario(prev => ({

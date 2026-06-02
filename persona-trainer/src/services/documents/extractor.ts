@@ -30,8 +30,7 @@ export function validateFile(file: File): string | null {
 
 async function extractPdf(file: File): Promise<string> {
   const { getDocument, GlobalWorkerOptions } = await import('pdfjs-dist');
-  // @ts-expect-error — dynamic import for the worker URL via Vite ?url suffix
-  const workerUrl = (await import('pdfjs-dist/build/pdf.worker.min.mjs?url')).default;
+  const workerUrl = (await import('pdfjs-dist/build/pdf.worker.min.mjs?url')).default as string;
   GlobalWorkerOptions.workerSrc = workerUrl;
 
   const arrayBuffer = await file.arrayBuffer();
@@ -42,7 +41,7 @@ async function extractPdf(file: File): Promise<string> {
     const page = await pdf.getPage(i);
     const content = await page.getTextContent();
     const pageText = content.items
-      .map((item: { str?: string }) => item.str ?? '')
+      .map((item) => (item as unknown as { str?: string }).str ?? '')
       .join(' ');
     parts.push(pageText);
   }
