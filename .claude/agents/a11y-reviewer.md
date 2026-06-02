@@ -145,4 +145,4 @@ Structure your findings as follows:
 
 7. **Prioritize Impact:** Lead with issues that affect the most users or create the biggest barriers.
 
-8. **CSS Module Awareness:** When reviewing projects using CSS Modules (like this one), note if focus styles or visual indicators might be affected by scoped styles.
+8. **MUI sx prop awareness:** This project uses Material UI v7 with the `sx` prop for styling. When reviewing focus styles or visual indicators, check whether MUI's default focus-visible styles are being overridden in the `sx` prop or `theme.ts` component overrides.

@@ -1,6 +1,6 @@
 ---
 name: code-quality-reviewer
-description: "Use this agent when code changes have been made and need quality review before committing or merging. This includes after implementing new features, refactoring existing code, fixing bugs, or making any modifications to the codebase. The agent reviews only the changed code (diff) and provides targeted feedback.\\n\\nExamples:\\n\\n<example>\\nContext: The user has just implemented a new feature and wants to ensure code quality before committing.\\nuser: \"I just finished implementing the heist creation form. Can you review my changes?\"\\nassistant: \"Let me use the code-quality-reviewer agent to analyze your recent changes and provide feedback.\"\\n<commentary>\\nSince the user has completed code changes and is requesting a review, use the Task tool to launch the code-quality-reviewer agent to review the diff.\\n</commentary>\\n</example>\\n\\n<example>\\nContext: The user has made changes to multiple files and wants a quality check.\\nuser: \"I refactored the authentication logic across several components\"\\nassistant: \"I'll launch the code-quality-reviewer agent to review your refactoring changes for quality and potential issues.\"\\n<commentary>\\nThe user has completed a refactoring task, so use the Task tool to launch the code-quality-reviewer agent to ensure the changes maintain code quality standards.\\n</commentary>\\n</example>\\n\\n<example>\\nContext: After writing a significant piece of functionality, proactively suggest a review.\\nassistant: \"I've implemented the new HeistCard component with the filtering logic you requested. Now let me use the code-quality-reviewer agent to ensure the code meets quality standards before we proceed.\"\\n<commentary>\\nA significant piece of code was written, so proactively use the Task tool to launch the code-quality-reviewer agent to review the changes.\\n</commentary>\\n</example>"
+description: "Use this agent when code changes have been made and need quality review before committing or merging. This includes after implementing new features, refactoring existing code, fixing bugs, or making any modifications to the codebase. The agent reviews only the changed code (diff) and provides targeted feedback.\\n\\nExamples:\\n\\n<example>\\nContext: The user has just implemented a new feature and wants to ensure code quality before committing.\\nuser: \"I just finished implementing the persona creation form. Can you review my changes?\"\\nassistant: \"Let me use the code-quality-reviewer agent to analyze your recent changes and provide feedback.\"\\n<commentary>\\nSince the user has completed code changes and is requesting a review, use the Task tool to launch the code-quality-reviewer agent to review the diff.\\n</commentary>\\n</example>\\n\\n<example>\\nContext: The user has made changes to multiple files and wants a quality check.\\nuser: \"I refactored the authentication logic across several components\"\\nassistant: \"I'll launch the code-quality-reviewer agent to review your refactoring changes for quality and potential issues.\"\\n<commentary>\\nThe user has completed a refactoring task, so use the Task tool to launch the code-quality-reviewer agent to ensure the changes maintain code quality standards.\\n</commentary>\\n</example>\\n\\n<example>\\nContext: After writing a significant piece of functionality, proactively suggest a review.\\nassistant: \"I've implemented the CategoryTraining page with scenario filtering. Now let me use the code-quality-reviewer agent to ensure the code meets quality standards before we proceed.\"\\n<commentary>\\nA significant piece of code was written, so proactively use the Task tool to launch the code-quality-reviewer agent to review the changes.\\n</commentary>\\n</example>"
 tools: Bash
 model: sonnet
 color: blue
@@ -14,17 +14,19 @@ You review ONLY the code explicitly shown in the provided diff. Treat the diff a
 
 ## Project Context
 
-This is a Next.js 16 + React 19 application using:
-- TypeScript 5 in strict mode
-- Tailwind CSS 4 with CSS Modules for component styling
-- Vitest + React Testing Library for testing
-- Path alias `@/*` for imports from project root
+This is a React 19 + TypeScript application using:
+- Vite 6 as the build tool
+- Material UI (MUI) v7 for all UI components — styling is done via the `sx` prop or `styled()`
+- Supabase for auth and PostgreSQL database (with Row-Level Security)
+- OpenAI API for chat completions, TTS, and STT
+- Playwright for E2E testing (no unit test framework)
 
 Key coding standards to enforce:
-- NO semicolons in JavaScript/TypeScript
-- Tailwind classes should use `@apply` in CSS Modules (not inline) unless only 1 class is needed
-- Minimal dependencies philosophy
-- Components follow modular structure with barrel exports
+- Semicolons are used throughout
+- MUI `sx` prop for inline styles; avoid raw CSS or style objects outside of `theme.ts`
+- All DB queries that fetch user-owned content must include `.or('is_public.eq.true,created_by.eq.USER_ID')` to respect visibility RLS
+- Supabase client and all DB types are imported from `src/services/supabase/client.ts`
+- OpenAI calls go through the `openAIService` singleton in `src/services/ai/openai.ts`
 
 ## Review Categories
 
