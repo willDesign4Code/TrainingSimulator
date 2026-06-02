@@ -17,6 +17,7 @@ export interface ScenarioProps {
   overview: string;
   customerPersona: string;
   imageUrl?: string;
+  documentCount?: number;
   onEdit?: (id: string) => void;
   onDelete?: (id: string) => void;
   onView?: (id: string) => void;
@@ -28,6 +29,7 @@ const ScenarioCard: React.FC<ScenarioProps> = ({
   overview,
   customerPersona,
   imageUrl,
+  documentCount,
   onEdit,
   onDelete,
   onView
@@ -109,12 +111,22 @@ const ScenarioCard: React.FC<ScenarioProps> = ({
             </>
           )}
         </Typography>
-        <Chip
-          label={`Persona: ${customerPersona}`}
-          size="small"
-          color="secondary"
-          variant="outlined"
-        />
+        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+          <Chip
+            label={`Persona: ${customerPersona}`}
+            size="small"
+            color="secondary"
+            variant="outlined"
+          />
+          {documentCount != null && documentCount > 0 && (
+            <Chip
+              label={`${documentCount} doc${documentCount > 1 ? 's' : ''}`}
+              size="small"
+              color="info"
+              variant="outlined"
+            />
+          )}
+        </Box>
       </CardContent>
       <CardActions sx={{ bgcolor: 'background.paper', p: 2, pt: 0, gap: 1 }}>
         {onView && (

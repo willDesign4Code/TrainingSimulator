@@ -25,6 +25,7 @@ import PersonIcon from '@mui/icons-material/Person';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import LogoutIcon from '@mui/icons-material/Logout';
 import HistoryIcon from '@mui/icons-material/History';
+import DescriptionIcon from '@mui/icons-material/Description';
 import { useAuth } from '../../contexts/AuthContext';
 
 const drawerWidth = 240;
@@ -82,6 +83,10 @@ const DashboardLayout = () => {
             <ListItem onClick={() => navigateTo('/personas')} sx={{ cursor: 'pointer' }}>
               <ListItemIcon><PersonIcon /></ListItemIcon>
               <ListItemText primary="Personas" />
+            </ListItem>
+            <ListItem onClick={() => navigateTo('/training-documents')} sx={{ cursor: 'pointer' }}>
+              <ListItemIcon><DescriptionIcon /></ListItemIcon>
+              <ListItemText primary="Training Documents" />
             </ListItem>
           </List>
           <Divider />

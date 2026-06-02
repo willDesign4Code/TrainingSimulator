@@ -1,0 +1,64 @@
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+const ACCEPTED_EXTENSIONS = ['.pdf', '.docx', '.txt', '.md'];
+
+export function validateFile(file: File): string | null {
+  const ext = '.' + file.name.split('.').pop()?.toLowerCase();
+  if (!ACCEPTED_EXTENSIONS.includes(ext)) {
+    return `Unsupported file type. Please upload a PDF, Word (.docx), text, or Markdown file.`;
+  }
+  if (file.size > MAX_FILE_SIZE) {
+    return `File is too large. Maximum size is 10 MB.`;
+  }
+  return null;
+}
+
+async function extractPdf(file: File): Promise<string> {
+  const { getDocument, GlobalWorkerOptions } = await import('pdfjs-dist');
+  // @ts-expect-error — dynamic import for the worker URL via Vite ?url suffix
+  const workerUrl = (await import('pdfjs-dist/build/pdf.worker.min.mjs?url')).default;
+  GlobalWorkerOptions.workerSrc = workerUrl;
+
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await getDocument({ data: arrayBuffer }).promise;
+  const parts: string[] = [];
+
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    const pageText = content.items
+      .map((item: { str?: string }) => item.str ?? '')
+      .join(' ');
+    parts.push(pageText);
+  }
+
+  return parts.join('\n\n');
+}
+
+async function extractDocx(file: File): Promise<string> {
+  const mammoth = await import('mammoth');
+  const arrayBuffer = await file.arrayBuffer();
+  const result = await mammoth.extractRawText({ arrayBuffer });
+  return result.value;
+}
+
+export async function extractText(
+  file: File
+): Promise<{ text: string; characterCount: number } | null> {
+  try {
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    let text = '';
+
+    if (ext === 'pdf') {
+      text = await extractPdf(file);
+    } else if (ext === 'docx') {
+      text = await extractDocx(file);
+    } else {
+      // .txt or .md
+      text = await file.text();
+    }
+
+    return { text, characterCount: text.length };
+  } catch {
+    return null;
+  }
+}
